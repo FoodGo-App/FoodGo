@@ -1,0 +1,30 @@
+# Local configuration and credentials
+.env
+.env.*
+!.env.example
+application-local.properties
+*.pem
+*.key
+*.p12
+*.pfx
+*.jks
+*.keystore
+
+# Dependencies, generated output and runtime files
+node_modules/
+.expo/
+target/
+dist/
+web-build/
+.runtime/
+*.log
+*.tsbuildinfo
+
+# Personal editor and OS files
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Local course documents are outside this BE/FE source handoff
+/SLDC/

@@ -1,0 +1,5 @@
+# Copy to application-local.properties and fill your own MariaDB credentials.
+# Do not overwrite an existing local file. Never commit actual passwords.
+spring.datasource.url=jdbc:mariadb://127.0.0.1:3306/fooddriver
+spring.datasource.username=root
+spring.datasource.password=
