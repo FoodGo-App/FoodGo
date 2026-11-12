@@ -11,10 +11,10 @@ import { normalizeMessage } from "../../../shared/api/adapters";
 export const communicationService = (request: Requester) => ({
   conversation: (id: string) =>
     request<Conversation>(`/orders/${id}/conversation`),
-  messages: async (id: string, beforeId?: string) =>
+  messages: async (id: string, beforeId?: string, afterId?: string) =>
     (
       await request<Message[]>(
-        `/orders/${id}/messages?limit=20${beforeId ? `&beforeId=${encodeURIComponent(beforeId)}` : ""}`,
+        `/orders/${id}/messages?limit=20${afterId ? `&afterId=${encodeURIComponent(afterId)}` : beforeId ? `&beforeId=${encodeURIComponent(beforeId)}` : ""}`,
       )
     ).map(normalizeMessage),
   send: (id: string, input: MessageInput) =>

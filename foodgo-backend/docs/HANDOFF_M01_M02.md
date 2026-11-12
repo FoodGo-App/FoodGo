@@ -8,7 +8,7 @@
 2. Tạo nhánh phát triển M01–M02 trong repository nhóm.
 3. Đọc các lớp `account/`, `catalog/`, `cart/` hiện có và migration V1.
 4. Đối chiếu SRS/SDS và frontend của A trước khi bổ sung API. Ghi những thay đổi hợp đồng cho thành viên M03–M05.
-5. Tạo seed local hoặc fixture kiểm thử có BCrypt và dữ liệu hợp lệ trước khi thử login/cart. Hiện database chỉ có schema; chưa có user/món/giỏ mẫu.
+5. Tạo seed local hoặc fixture kiểm thử có BCrypt và dữ liệu hợp lệ trước khi thử login/cart. Đã có seed local gồm 5 user, catalog, địa chỉ, ưu đãi và giỏ mẫu; xem SEED_DATA.md.
 
 ## Phạm vi và trạng thái
 
@@ -19,9 +19,9 @@
 | M02 catalog | API đọc quán, món, chi tiết món/tùy chọn, ưu đãi | Danh mục, yêu thích, tìm kiếm/lọc/chi tiết quán và API còn thiếu theo SRS; tối ưu phân trang khi cần |
 | M02 giỏ | Xem, thêm, sửa, xóa món, xóa giỏ; version và đổi quán | Kiểm thử option, gộp dòng, đổi quán và cạnh tranh cập nhật; thống nhất body với FE |
 | M02 pricing | Kiểm tra món/option, giá và quote payload phía server | Hoàn thiện, kiểm thử và giữ interface cho M03 |
-| Dữ liệu local | Schema 21 bảng | Seed idempotent cho user, quán, món, option, offer, địa chỉ, giỏ; chạy có điều kiện local, không reset dữ liệu người dùng |
-| M03 | `OrderPolicy`, `OrderModel` ban đầu | Checkout/attempt/order API chưa có đầy đủ |
-| M04/M05 | Package scaffold | Chưa có service/controller nghiệp vụ |
+| Dữ liệu local | Schema 21 bảng và seed idempotent user/catalog/options/offers/address/cart | Giữ nguyên cơ chế không reset dữ liệu khi bổ sung fixture của M01–M02 |
+| M03 | Checkout/attempt/order API, snapshot, hủy/refund, tracking mô phỏng | Giữ interface pricing/cart để phối hợp M03 |
+| M04/M05 | Quán, dispatch/tài xế, chat/call mô phỏng, review | Xem API_FLOW_RUNBOOK.md; không thay mã trạng thái dùng chung |
 
 ## API nền hiện có
 

@@ -1,5 +1,7 @@
 # Bàn giao M01–M02 — 12/11/2026
 
+> Tài liệu/kết quả dưới đây thuộc nhánh M01–M02 trước tích hợp. Main đã bổ sung M03–M05; trạng thái worktree ghép và chốt DB riêng xem [hướng dẫn tích hợp](INTEGRATION_M01_M05.md). Chưa nhận kết quả cũ là DB/FE–BE/mobile của bản tích hợp đạt.
+
 ## Phạm vi và trạng thái
 
 Ngày 12/11/2026, người dùng trực tiếp thao tác trên Android/Expo Go và xác nhận PASS: catalog/yêu thích/giỏ, địa chỉ, đóng/mở lại khôi phục phiên A, logout rồi đóng/mở lại vẫn Guest, login B không thấy dữ liệu riêng A. Đây là kết quả kiểm thử thủ công do người dùng cung cấp; ảnh tĩnh không tự chứng minh đầy đủ chuỗi restore hoặc tách dữ liệu A/B. Agent không nhận là đã tự điều khiển thiết bị.
@@ -56,7 +58,7 @@ CREATE DATABASE IF NOT EXISTS fooddriver_m01_test
 ```
 
 3. Tools → User manager → Add: chọn tên account test riêng (ví dụ foodgo_m01_test), host 127.0.0.1 cho JDBC TCP loopback. Tự nhập mật khẩu trong UI HeidiSQL; không ghi vào script, báo cáo hoặc chat. Nếu môi trường phân giải host thành localhost, quản trị viên đối chiếu account host thực tế và CURRENT_USER(); không cấp host '%' để xử lý tắt.
-4. Chỉ cấp SELECT, INSERT, UPDATE, DELETE, CREATE trên fooddriver_m01_test.* cho V1/test hiện tại; không cấp global, fooddriver.*, ALL PRIVILEGES hoặc GRANT OPTION. Nếu engine/Flyway thực tế báo thiếu quyền DDL cụ thể, đọc đúng lỗi rồi cấp riêng quyền đó trên schema test; không mở rộng toàn server. Không cấp quyền DROP để clean/reset. Không sao chép mật khẩu/hash từ SHOW GRANTS vào evidence. V1 hiện chỉ CREATE TABLE với index bên trong; [MariaDB GRANT](https://mariadb.com/docs/server/reference/sql-statements/account-management-sql-statements/grant) cho phép tạo index cùng bảng bằng quyền CREATE. Bộ quyền tối thiểu này được đối chiếu source/tài liệu, chưa thử tạo một account/schema trắng mới trong lượt chuẩn bị nộp.
+4. Chỉ cấp SELECT, INSERT, UPDATE, DELETE, CREATE trên fooddriver_m01_test.* và ALTER trên bảng users (hoặc schema test) cho V1 dòng17; không cấp global, fooddriver.*, ALL PRIVILEGES hoặc GRANT OPTION. Nếu engine/Flyway thực tế báo thiếu quyền DDL cụ thể, đọc đúng lỗi rồi cấp riêng quyền đó trên schema test; không mở rộng toàn server. Không cấp quyền DROP để clean/reset. Không sao chép mật khẩu/hash từ SHOW GRANTS vào evidence. V1 tạo bảng/index và có ALTER TABLE users ADD CONSTRAINT ở dòng17; [MariaDB GRANT](https://mariadb.com/docs/server/reference/sql-statements/account-management-sql-statements/grant) cho phép tạo index cùng bảng bằng quyền CREATE. Bộ quyền tối thiểu này được đối chiếu source/tài liệu, chưa thử tạo một account/schema trắng mới trong lượt chuẩn bị nộp.
 5. Kết nối phiên HeidiSQL mới bằng chính account test vào 127.0.0.1:3306/fooddriver_m01_test. SELECT DATABASE(), CURRENT_USER(); phải đúng schema/account test. USE fooddriver; phải bị từ chối quyền (1044/1142). Quay lại USE fooddriver_m01_test;. Không sửa dữ liệu trong các bước xác minh này. TestDatabaseProbe sẽ kiểm tra lại điều kiện trước Flyway.
 
 ## 3. Khởi động test API từ source, kể cả sau reboot

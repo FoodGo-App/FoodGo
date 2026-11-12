@@ -1,5 +1,7 @@
 # M01–M02: hợp đồng và điểm nối triển khai
 
+> Tài liệu/kết quả dưới đây thuộc nhánh M01–M02 trước tích hợp. Main đã bổ sung M03–M05; trạng thái worktree ghép và chốt DB riêng xem [hướng dẫn tích hợp](../../docs/INTEGRATION_M01_M05.md). Chưa nhận kết quả cũ là DB/FE–BE/mobile của bản tích hợp đạt.
+
 - API-04–07: ownership lấy từ principal; khóa user cho giới hạn 10. POST trả 201; input sai 400 VALIDATION_ERROR; vượt giới hạn 409 ADDRESS_LIMIT; đọc/sửa/xóa ID không thuộc chủ 404. Xóa lặp ID đã mất trả 404 và không có tác động mới (không bổ sung tombstone/schema). Không cập nhật orders/order_items: snapshot địa chỉ trên đơn giữ độc lập.
 - API-08–14: home/categories/restaurant detail/food detail/offers; q, categoryId, restaurantId, areaCode mẫu; sort rating/distance/price; page>=0, size1–50; SQL lấy size+1 theo OFFSET. Metadata đánh giá/khoảng cách/ETA/review là mẫu. Không chứa isFavorite trong DTO công khai.
 - API-15–17: FavoriteDto type,targetId,summary,savedAt; chỉ user hiện tại. PUT/DELETE idempotent; khóa user khi ghi. Favorites có q/sort/page; bộ lọc yêu thích trên FE bỏ categoryId vì API-15 không định nghĩa tham số đó, ghi rõ thay vì lọc sai trên một trang dữ liệu.

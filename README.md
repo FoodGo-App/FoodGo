@@ -5,13 +5,13 @@
 | Thư mục | Nội dung |
 |---|---|
 | [foodgo-frontend](foodgo-frontend/README.md) | Ứng dụng mobile và giao diện các vai trò, mascot panda, chế độ demo và lớp gọi API |
-| [foodgo-backend](foodgo-backend/README.md) | Khung backend theo module, code nền, schema MariaDB và hướng dẫn chạy |
+| [foodgo-backend](foodgo-backend/README.md) | API M03–M05, nền M01–M02, schema MariaDB và seed local |
 
 ## Trạng thái bàn giao
 
-M01–M02 đã có FE/BE nối API thật: 12 kịch bản Chrome/CDP PASS trên database kiểm thử riêng; backend 45 test đạt. Người dùng đã trực tiếp nghiệm thu Android/Expo Go PASS cho catalog/yêu thích/giỏ, địa chỉ, restore/logout và tách dữ liệu A/B. iOS và UI dòng giỏ mất khả dụng chưa kiểm tra. M03–M05 giữ giao diện/demo của nhóm, chưa coi API nghiệp vụ các module đó hoàn tất.
+M01–M02 giữ kết quả nghiệm thu riêng (backend45, FE67, web12 và Android do người dùng thao tác). Main đã bổ sung API checkout/order/fulfillment/communication M03–M05. Bản worktree tích hợp đang được kiểm tra độc lập; kết quả các nhánh trước không tự chứng minh FE–BE/DB/mobile của bản tích hợp đã đạt.
 
-Đọc [bàn giao M01–M02](docs/M01_M02_HANDOVER.md), [checklist demo](foodgo-frontend/docs/M01_M02_DEMO.md) và [chuẩn bị mobile](docs/M01_M02_MOBILE.md) để chạy đúng ứng dụng thông thường hoặc test launcher. Cấu hình test không fallback sang database ứng dụng.
+Đọc [bàn giao M01–M02](docs/M01_M02_HANDOVER.md), [runbook main](foodgo-backend/docs/API_FLOW_RUNBOOK.md), và [cách ly DB tích hợp](docs/INTEGRATION_M01_M05.md).
 
 Thành viên nhận backend M01–M02 đọc [hướng dẫn bàn giao](foodgo-backend/docs/HANDOFF_M01_M02.md) và [kiến trúc](foodgo-backend/docs/ARCHITECTURE.md). M01 thuộc `account`, M02 thuộc `catalog` và `cart`; M03–M05 lần lượt thuộc `ordering`, `fulfillment`, `communication`.
 

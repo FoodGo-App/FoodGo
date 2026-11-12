@@ -19,7 +19,7 @@ import java.util.Map;
  */
 @org.springframework.core.annotation.Order(10)
 @Component
-@Profile("local & !prod & !test & !m01-test")
+@Profile("local & !prod & !test & !m01-test & !flow-test")
 @ConditionalOnProperty(name = "foodgo.seed-enabled", havingValue = "true", matchIfMissing = false)
 public class M01FixtureLoader implements CommandLineRunner {
 

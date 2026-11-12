@@ -22,6 +22,9 @@ import {
 import { SimulatedMap } from "../../../shared/components/SimulatedMap";
 import { FoodThumbnail } from "../../../shared/components/FoodThumbnail";
 import { useResource } from "../../../shared/hooks/useResource";
+import { useDraft } from "../../../shared/hooks/useDraft";
+import { prepareIssue, type IssueDraft } from "../lib/issueDraft";
+import { AnimatedChange, SuccessMotion } from "../../../shared/components/Motion";
 import {
   colors,
   dateTime,
@@ -56,7 +59,8 @@ function Detail() {
     [error, setError] = useState<string | null>(null),
     [reason, setReason] = useState(""),
     [cod, setCod] = useState(false);
-  const issueKey = useRef<string | null>(null);
+  const actionLock = useRef(false);
+  const issueDraft = useDraft<IssueDraft>("delivery-issue",id,{text:"",pending:null});
   const service = deliveryService(request);
   const order = query.data;
   const tracking = useResource(
@@ -66,7 +70,8 @@ function Detail() {
     `tracking:${id}`,
   );
   const act = async (fn: () => Promise<unknown>) => {
-    if (busy) return;
+    if (actionLock.current) return;
+    actionLock.current=true;
     setBusy(true);
     setError(null);
     try {
@@ -77,10 +82,13 @@ function Detail() {
       setError(explain(e));
       await query.reload();
     } finally {
+      actionLock.current=false;
       setBusy(false);
     }
   };
   const confirmAction = async (fn: () => Promise<unknown>) => {
+    if(actionLock.current) throw new Error("Đang xử lý, chờ một chút nhé.");
+    actionLock.current=true;
     setBusy(true);
     setError(null);
     try {
@@ -92,14 +100,30 @@ function Detail() {
       await query.reload();
       throw new Error(explain(e));
     } finally {
+      actionLock.current=false;
       setBusy(false);
     }
+  };
+  const reportIssue = async () => {
+    if(actionLock.current || !issueDraft.ready)return;
+    actionLock.current=true;setBusy(true);setError(null);
+    try {
+      const input=prepareIssue(issueDraft.value,newRequestKey);
+      await issueDraft.update({text:input.reason,pending:input});
+      await service.issue(id,input.reason,input.requestKey);
+      await issueDraft.update({text:"",pending:null});
+      await query.reload();
+    } catch(e) {
+      if(["ORDER_STATE_CONFLICT","INVALID_REASON","INVALID_REQUEST_KEY"].includes((e as {code?:string}).code??""))
+        await issueDraft.update({text:issueDraft.value.text,pending:null}).catch(()=>{});
+      setError(explain(e));await query.reload();
+    } finally {actionLock.current=false;setBusy(false);}
   };
   const has = (action: string) => order?.allowedActions?.includes(action);
   if (success === "1" && role === "CUSTOMER" && order)
     return (
       <Screen title="Đặt món thành công!" subtitle={`Mã đơn #${id}`} back>
-        <Panda pose="success" size={220} />
+        <SuccessMotion><Panda pose="success" size={220} /></SuccessMotion>
         <View style={{ alignItems: "center", gap: 12 }}>
           <Text
             style={{
@@ -127,7 +151,7 @@ function Detail() {
               <Heading>{order.restaurantName}</Heading>
               <Label muted>
                 {order.items.reduce((sum, item) => sum + item.quantity, 0)} phần
-                · {order.paymentMethod === "COD" ? "Tiền mặt" : "Ví mô phỏng"}
+                · {order.paymentMethod === "COD" ? "Tiền mặt" : "Ví thử nghiệm"}
               </Label>
               <Text style={styles.bigPrice}>{money(order.total)}</Text>
             </View>
@@ -165,7 +189,7 @@ function Detail() {
       {error && <Banner error>{error}</Banner>}
       {order && (
         <>
-          <Card>
+          <AnimatedChange changeKey={`${order.status}:${order.deliveryStatus}:${order.paymentStatus}`}><Card>
             <Text
               style={{ fontSize: 22, fontWeight: "800", color: colors.brand }}
             >
@@ -177,14 +201,14 @@ function Detail() {
             </View>
             <View style={styles.between}>
               <Label muted>
-                {order.paymentMethod === "COD" ? "Tiền mặt" : "Ví mô phỏng"}
+                {order.paymentMethod === "COD" ? "Tiền mặt" : "Ví thử nghiệm"}
               </Label>
               <Label>{statusLabels[order.paymentStatus]}</Label>
             </View>
             {query.updatedAt && (
               <Label muted>Cập nhật lúc {dateTime(query.updatedAt)}</Label>
             )}
-          </Card>
+          </Card></AnimatedChange>
           {order.driverId && role !== "RESTAURANT" && (
             <>
               {tracking.error && <Banner error>{tracking.error}</Banner>}
@@ -200,7 +224,7 @@ function Detail() {
                   Liên hệ theo đơn, chỉ giữa khách hàng và tài xế.
                 </Label>
                 <Button
-                  title="Mở hội thoại"
+                    title="Nhắn tin"
                   variant="secondary"
                   onPress={() =>
                     router.push({
@@ -211,7 +235,7 @@ function Detail() {
                 />
                 {has("call") && (
                   <Button
-                    title="Gọi mô phỏng"
+                    title="Gọi · dùng thử"
                     variant="ghost"
                     onPress={() =>
                       router.push({
@@ -278,7 +302,7 @@ function Detail() {
               {has("cancel") ? (
                 <>
                   <Field
-                    label="Lý do hủy (không bắt buộc)"
+                    label="Bạn muốn hủy vì lý do gì?"
                     value={reason}
                     onChangeText={setReason}
                     maxLength={300}
@@ -287,9 +311,9 @@ function Detail() {
                     title="Hủy đơn hàng"
                     detail="Chỉ hủy nếu quán chưa tiếp nhận. Hệ thống kiểm tra lại trạng thái khi xác nhận."
                     onConfirm={() =>
-                      confirmAction(() =>
-                        orderService(request).cancel(id, reason),
-                      )
+                      reason.trim() ? confirmAction(() =>
+                        orderService(request).cancel(id, reason.trim()),
+                      ) : Promise.reject(new Error("Nhập lý do hủy đơn giúp mình nhé."))
                     }
                   />
                 </>
@@ -363,7 +387,7 @@ function Detail() {
                   />
                   <Confirm
                     title="Từ chối đơn"
-                    detail="Đơn sẽ kết thúc; ví mô phỏng được hoàn theo kết quả hệ thống."
+                    detail="Đơn sẽ được hủy. Nếu đã trả bằng ví thử nghiệm, khoản tiền sẽ được hoàn lại."
                     onConfirm={() => {
                       if (!reason.trim())
                         return Promise.reject(
@@ -410,13 +434,14 @@ function Detail() {
                 <>
                   {order.paymentMethod === "COD" ? (
                     <Chip
-                      title={`${cod ? "☑" : "☐"} Tôi đã thu đủ ${money(order.total)} COD`}
+                      title={`${cod ? "☑" : "☐"} Đã thu đủ ${money(order.total)} tiền mặt`}
                       selected={cod}
+                      disabled={busy}
                       onPress={() => setCod((v) => !v)}
                     />
                   ) : (
                     <Banner>
-                      Đã thanh toán ví mô phỏng. Không thu thêm tiền mặt.
+                      Khách đã trả bằng ví thử nghiệm. Không thu thêm tiền mặt.
                     </Banner>
                   )}
                   <Confirm
@@ -425,7 +450,7 @@ function Detail() {
                     onConfirm={() => {
                       if (order.paymentMethod === "COD" && !cod)
                         return Promise.reject(
-                          new Error("Cần xác nhận đã thu đủ COD."),
+                          new Error("Xác nhận đã thu đủ tiền mặt trước khi hoàn tất nhé."),
                         );
                       return confirmAction(() =>
                         service.deliver(
@@ -436,29 +461,29 @@ function Detail() {
                     }}
                   />
                   <Field
-                    label="Trở ngại giao hàng"
-                    value={reason}
-                    onChangeText={setReason}
+                    label="Bạn đang gặp khó khăn gì?"
+                    value={issueDraft.value.text}
+                    editable={issueDraft.ready&&!busy&&!issueDraft.value.pending}
+                    onChangeText={(text)=>{void issueDraft.update({text,pending:null}).catch(()=>{});}}
                     maxLength={300}
                     multiline
                   />
                   <Button
-                    title="Ghi nhận trở ngại"
+                    title={issueDraft.value.pending?"Kiểm tra nội dung vừa gửi":"Báo khó khăn khi giao"}
                     variant="secondary"
                     busy={busy}
-                    disabled={!reason.trim()}
+                    disabled={!issueDraft.ready||(!issueDraft.value.pending&&!issueDraft.value.text.trim())}
                     onPress={() => {
-                      issueKey.current ??= newRequestKey();
-                      void act(async () => {
-                        await service.issue(id, reason, issueKey.current!);
-                        issueKey.current = null;
-                      });
+                      void reportIssue();
                     }}
                   />
+                  {issueDraft.value.pending&&<Banner>Nội dung đang chờ xác nhận. Bấm kiểm tra để gửi lại đúng nội dung trước đó.</Banner>}
+                  {issueDraft.error&&<><Banner error>{issueDraft.error}</Banner>{!issueDraft.ready&&<Button title="Thử đọc lại thông báo" onPress={()=>{void issueDraft.reload();}} />}</>}
                 </>
               )}
             </Card>
           )}
+          {role==="DRIVER"&&issueDraft.value.pending&&!has("deliver")&&<Card><Heading>Kiểm tra thông báo vừa gửi</Heading><Label>{issueDraft.value.pending.reason}</Label><Button title="Kiểm tra thông báo" busy={busy} onPress={()=>{void reportIssue();}} /></Card>}
         </>
       )}
     </Screen>

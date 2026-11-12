@@ -45,6 +45,8 @@ export type CartItem = {
   unitPrice: number;
   options: string;
   note: string;
+  available?: boolean;
+  validationMessage?: string;
 };
 export type Cart = {
   id: string;
@@ -63,6 +65,7 @@ export type Offer = {
   amount?: number;
   minSubtotal: number;
   requiredMethod?: PaymentMethod;
+  restaurantId?: string;
 };
 export type QuoteInput = {
   addressId: string;
@@ -88,6 +91,9 @@ export type Attempt = {
   result: "PENDING" | "SUCCEEDED" | "FAILED" | "CANCELLED" | "REFUNDED";
   orderId: string | null;
   reasonCode?: string;
+  quoteId?: string;
+  cartVersion?: number;
+  paymentMethod?: PaymentMethod;
 };
 export type OrderEvent = { id: string; text: string; createdAt: string };
 export type Order = {

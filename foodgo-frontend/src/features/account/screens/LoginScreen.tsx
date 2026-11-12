@@ -61,8 +61,8 @@ export default function LoginScreen() {
       {mode === "demo" ? (
         <>
           <Banner>
-            Công cụ chọn tài khoản demo, không phải xác thực thật. Đơn được giữ
-            giữa các vai trò để diễn tập cùng một luồng.
+            Chọn một tài khoản để dùng thử FoodGo. Bạn có thể đổi tài khoản
+            để cùng theo dõi một đơn từ lúc đặt đến khi giao.
           </Banner>
           {DEMO_USERS.map((user) => (
             <Card key={user.id}>
@@ -75,7 +75,7 @@ export default function LoginScreen() {
                     : "Nhà hàng"}
               </Label>
               <Button
-                title={`Dùng tài khoản ${user.id}`}
+                title={`Tiếp tục với ${user.displayName}`}
                 variant="secondary"
                 busy={busy}
                 disabled={restoring}
@@ -109,7 +109,7 @@ export default function LoginScreen() {
             }}
           />
           <Label muted>
-            Dùng tài khoản được cấp. Không có đăng ký hoặc tự chọn quyền.
+            Đăng nhập bằng tài khoản FoodGo của bạn.
           </Label>
         </Card>
       )}

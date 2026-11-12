@@ -9,7 +9,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.core.annotation.Order;
 import java.util.*;
 /** Explicit local-only demo data; inserts missing rows and never replaces user data. */
-@Component @Order(20) @Profile("local & !prod & !test & !m01-test")
+@Component @Order(20) @Profile("local & !prod & !test & !m01-test & !flow-test")
 @ConditionalOnProperty(name="foodgo.seed-enabled",havingValue="true",matchIfMissing=false)
 public class M02FixtureLoader implements CommandLineRunner {
  private final JpaSql db;public M02FixtureLoader(JpaSql db){this.db=db;}

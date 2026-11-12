@@ -398,6 +398,13 @@ export class DemoEngine {
       if (q.paymentMethod === "COD") this.commit(a);
       return clone(a);
     }
+    if (path === "/checkout/attempts/current" && method === "GET") {
+      this.role(user, "CUSTOMER");
+      const pending = [...this.state.attempts].reverse().find(a => a.customerId === user.id && a.result === "PENDING");
+      if (!pending) return null;
+      const quote = this.state.quotes[pending.quoteId];
+      return clone({ ...pending, quoteId: pending.quoteId, cartVersion: quote.expectedCartVersion, paymentMethod: quote.paymentMethod });
+    }
     if (path.startsWith("/checkout/attempts/")) {
       this.role(user, "CUSTOMER");
       const bits = path.split("/");
@@ -665,7 +672,7 @@ export class DemoEngine {
             (!after || Number(m.id) > Number(after)),
         );
         const limit = Math.min(50, Number(query.get("limit")) || 20);
-        return clone(filtered.slice(-limit));
+        return clone(after ? filtered.slice(0,limit) : filtered.slice(-limit));
       }
       const input = b as unknown as MessageInput;
       const previous = list.find(

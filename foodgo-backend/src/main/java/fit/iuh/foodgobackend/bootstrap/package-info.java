@@ -1,4 +1,4 @@
 /**
- * Local seed and fixtures. Scaffold only; no seed runs yet.
+ * Non-destructive local demo seed, enabled by foodgo.seed-enabled.
  */
 package fit.iuh.foodgobackend.bootstrap;

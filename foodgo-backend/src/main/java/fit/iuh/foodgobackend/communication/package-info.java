@@ -1,4 +1,4 @@
 /**
- * M05: order messages, simulated calls and driver reviews. Scaffold only.
+ * M05: order messages, simulated calls and driver reviews.
  */
 package fit.iuh.foodgobackend.communication;

@@ -2,9 +2,9 @@
 
 Spring Boot 4.1.2 · Java 21 · Maven Wrapper · MariaDB · Flyway.
 
-**M01–M02 đã nối FE–BE thật trên DB test riêng: 12 kịch bản UI/API PASS; backend 45 test đạt. Các luồng M01–M02 chính trên Android/Expo Go đã được người dùng trực tiếp nghiệm thu PASS, gồm restore/logout và tách dữ liệu A/B. M03–M05 chưa nghiệm thu API trong phạm vi này.**
+**Worktree tích hợp M01–M05: giữ nghiệp vụ M01–M02 và API M03–M05 từ main; chưa nghiệm thu DB/FE–BE/mobile của bản tích hợp.**
 
-Hướng dẫn hiện hành: [bàn giao/chạy lại sau reboot](../docs/M01_M02_HANDOVER.md). Các bước chạy cá nhân dưới đây là ứng dụng thường :8080/fooddriver; test launcher dùng :18080/fooddriver_m01_test, account và cấu hình riêng.
+Xem [cách ly DB và kiểm tra](../docs/INTEGRATION_M01_M05.md). Kết quả M01–M02 trước tích hợp vẫn được lưu riêng trong [bàn giao](../docs/M01_M02_HANDOVER.md).
 
 ## Chạy trên máy cá nhân
 
@@ -55,7 +55,7 @@ foodgo-backend/
 │   ├── ordering/                # M03: checkout, thanh toán mô phỏng, đơn hàng
 │   ├── fulfillment/             # M04: quán xử lý đơn, tài xế giao hàng
 │   ├── communication/           # M05: chat, cuộc gọi mô phỏng, đánh giá
-│   └── bootstrap/               # Fixture local chỉ chạy khi profile local + opt-in rõ ràng
+│   └── bootstrap/               # Fixture/seed idempotent, chỉ local + opt-in, tắt trong mọi test profile
 ├── src/main/resources/
 │   ├── application.properties   # Cấu hình chung, không chứa mật khẩu thật
 │   └── db/migration/            # Schema Flyway
@@ -77,7 +77,7 @@ foodgo-backend/
 .\mvnw.cmd -DskipTests package
 ```
 
-Test context/HTTP yêu cầu FOODGO_TEST_DB_URL, FOODGO_TEST_DB_USERNAME, FOODGO_TEST_DB_PASSWORD riêng. Guard chặn trước refresh/Flyway; TestDatabaseProbe kiểm tra account không truy cập được fooddriver. Xem bàn giao trước khi chạy lệnh test bên trên. Bộ backend gần nhất: 45 tests, 0 failures/errors/skipped; không dùng cấu hình local để fallback test.
+Test M01 dùng fooddriver_m01_test; Flow/JPA/Seed integration của main dùng fooddriver_it_m01_m05 riêng. Cùng chốt trước refresh/DataSource/Flyway, không import local hoặc fallback fooddriver. Chỉ chạy test DB khi probe đúng policy đã đạt. Xem [hướng dẫn tích hợp](../docs/INTEGRATION_M01_M05.md).
 
 ## Tích hợp Expo
 
@@ -85,8 +85,10 @@ API dùng tiền tố `/api/v1`, cổng mặc định `8080`. Điện thoại d�
 
 M01/M02 có API auth, địa chỉ, catalog, yêu thích và giỏ. Catalog có thể trống trên schema mới; không có tài khoản đăng nhập triển khai được nhúng trong gói. Fixture local cần profile local và foodgo.seed-enabled=true rõ ràng; mặc định tắt. Không tự seed fooddriver. TestServerLauncher tạo fixture riêng trong database test và ghi metadata không chứa password/token. Wallet/call thuộc phần nhóm M03–M05.
 
+Seed tự thêm dữ liệu mẫu khi `foodgo.seed-enabled=true`: `customer-1`, `customer-2`, `restaurant-1`, `driver-1`, `driver-2`, mật khẩu local mặc định `FoodGo@123`. Dữ liệu/credential đã có được giữ nguyên. Xem [dữ liệu mẫu](docs/SEED_DATA.md) và [hướng dẫn chạy luồng API](docs/API_FLOW_RUNBOOK.md). Ví, cuộc gọi và tracking dùng mô phỏng theo SRS.
+
 ## Đưa lên Git
 
 Đưa source, `pom.xml`, wrapper, migration, tài liệu và file `.example` lên Git. Không đưa `application-local.properties`, `.env`, `target/`, `.idea/`, log hay dữ liệu runtime lên Git. Nếu file chứa mật khẩu từng được theo dõi trước đó, `.gitignore` không tự gỡ nó khỏi lịch sử Git.
 
-Chưa tự tạo commit hoặc push repository; người phụ trách nhóm chọn repository và nhánh bàn giao.
+Repository nhóm: https://github.com/HonaJnh/FoodGo. Thay đổi mới cần được review theo nhánh trước khi tích hợp.

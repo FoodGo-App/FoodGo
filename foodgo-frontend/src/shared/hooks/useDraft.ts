@@ -13,33 +13,24 @@ export function useDraft<T>(kind: string, id: string, initial: T) {
     error: null as string | null,
   });
   const chain = useRef(Promise.resolve());
+  const reload = useCallback(async () => {
+    try {
+      await chain.current.catch(()=>{});
+      const value=await readStore<T>(key);
+      setState(previous=>previous.key===key?{key,value:value??defaultValue,ready:true,saved:false,error:null}:previous);
+    } catch {
+      setState(previous=>previous.key===key?{key,value:defaultValue,ready:false,saved:false,error:"Chưa đọc được nội dung đã lưu. Thử tải lại trước khi gửi nhé."}:previous);
+    }
+  },[key,defaultValue]);
   useEffect(() => {
-    let alive = true;
-    readStore<T>(key)
-      .then((value) => {
-        if (alive)
-          setState({
-            key,
-            value: value ?? defaultValue,
-            ready: true,
-            saved: false,
-            error: null,
-          });
-      })
-      .catch(() => {
-        if (alive)
-          setState({
-            key,
-            value: defaultValue,
-            ready: true,
-            saved: false,
-            error: "Không đọc được bản nháp.",
-          });
-      });
-    return () => {
-      alive = false;
-    };
-  }, [key, defaultValue]);
+    let active=true;
+    readStore<T>(key).then(value=>{
+      if(active)setState({key,value:value??defaultValue,ready:true,saved:false,error:null});
+    }).catch(()=>{
+      if(active)setState({key,value:defaultValue,ready:false,saved:false,error:"Chưa đọc được nội dung đã lưu. Thử tải lại trước khi gửi nhé."});
+    });
+    return () => {active=false;};
+  }, [key,defaultValue]);
   const update = useCallback(
     (value: T) => {
       setState({ key, value, ready: true, saved: false, error: null });
@@ -67,6 +58,6 @@ export function useDraft<T>(kind: string, id: string, initial: T) {
     [key],
   );
   return state.key === key
-    ? { ...state, update }
-    : { value: defaultValue, ready: false, saved: false, error: null, update };
+    ? { ...state, update, reload }
+    : { value: defaultValue, ready: false, saved: false, error: null, update, reload };
 }
