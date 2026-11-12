@@ -1,6 +1,7 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
+import { decodeStoredValue } from "./json";
 let webToken: string | null = null;
 export const tokenStore = {
   get: () =>
@@ -18,12 +19,7 @@ export const tokenStore = {
 };
 export async function readStore<T>(key: string): Promise<T | null> {
   const raw = await AsyncStorage.getItem(`foodgo:v1:${key}`);
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as T;
-  } catch {
-    return null;
-  }
+  return decodeStoredValue<T>(raw);
 }
 export const writeStore = (key: string, value: unknown) =>
   AsyncStorage.setItem(`foodgo:v1:${key}`, JSON.stringify(value));

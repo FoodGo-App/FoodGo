@@ -1,4 +1,4 @@
-import React, { useRef, useState } from "react";
+import React, { useMemo, useRef, useState } from "react";
 import { Image, Text, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../../providers/AppProvider";
@@ -19,6 +19,8 @@ import { useDraft } from "../../../shared/hooks/useDraft";
 import { communicationService } from "../services/communicationService";
 import { colors, dateTime, explain } from "../../../shared/theme/theme";
 import { newRequestKey } from "../../../shared/utils/id";
+import { mergeHistory, MessageTimeline } from "../lib/history";
+import { AnimatedChange } from "../../../shared/components/Motion";
 import type { Message, MessageInput } from "../../../shared/types/domain";
 export default function ChatScreen() {
   return (
@@ -31,31 +33,32 @@ function Chat() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const { request, session } = useApp();
   const service = communicationService(request);
+  const timeline=useMemo(()=>new MessageTimeline<Message>(`${session?.user.id}:${orderId}`),[orderId,session?.user.id]);
   const query = useResource(
     async () => {
       const [conversation, messages] = await Promise.all([
         service.conversation(orderId),
-        service.messages(orderId),
+        timeline.refresh(after=>service.messages(orderId,undefined,after)),
       ]);
       return { conversation, messages };
     },
     true,
     true,
     orderId,
+    (previous, incoming) => ({ ...incoming, messages: mergeHistory(previous ? {scope: orderId, messages: previous.messages} : null, orderId, incoming.messages).messages }),
   );
   const draft = useDraft<{ text: string; pending: MessageInput | null }>(
     "chat",
     orderId,
     { text: "", pending: null },
   );
-  const [older, setOlder] = useState<Message[]>([]),
-    [hasOlder, setHasOlder] = useState(true),
+  const historyScope = `${session!.user.id}:${orderId}`;
+  const [older, setOlder] = useState<{scope:string; messages:Message[]; hasOlder:boolean}>({scope:"",messages:[],hasOlder:true}),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const lock = useRef(false);
-  const messages = [...older, ...(query.data?.messages ?? [])].filter(
-    (x, i, a) => a.findIndex((y) => y.id === x.id) === i,
-  );
+  const messages = mergeHistory(older, historyScope, query.data?.messages ?? []).messages;
+  const hasOlder = older.scope === historyScope ? older.hasOlder : true;
   const readOnly = query.data?.conversation.readOnly ?? true;
   const send = async (image = false) => {
     if (lock.current || !draft.ready || (readOnly && !draft.value.pending))
@@ -73,10 +76,16 @@ function Chat() {
     try {
       if (input.kind === "TEXT" && !input.text) return;
       await draft.update({ ...draft.value, pending: input });
-      await service.send(orderId, input);
+      const sent = await service.send(orderId, input);
+      timeline.add([sent]);
+      setOlder(previous=>({...mergeHistory(previous,historyScope,[sent]),hasOlder:previous.scope===historyScope?previous.hasOlder:true}));
       await draft.update({ text: "", pending: null });
       await query.reload();
     } catch (e) {
+      const code = (e as {code?:string}).code;
+      if(code === "MESSAGE_READ_ONLY" || code === "INVALID_MESSAGE") {
+        await draft.update({text:draft.value.text,pending:null}).catch(()=>{});
+      }
       setError(explain(e));
     } finally {
       lock.current = false;
@@ -84,15 +93,18 @@ function Chat() {
     }
   };
   const more = async () => {
+    if(lock.current)return;
+    lock.current=true;
     setBusy(true);
     setError(null);
     try {
       const old = await service.messages(orderId, messages[0]?.id);
-      setOlder([...old, ...older]);
-      setHasOlder(old.length === 20);
+      timeline.add(old);
+      setOlder(previous=>({...mergeHistory(previous,historyScope,old),hasOlder:old.length===20}));
     } catch (e) {
       setError(explain(e));
     } finally {
+      lock.current=false;
       setBusy(false);
     }
   };
@@ -102,15 +114,16 @@ function Chat() {
   return (
     <Screen
       title={peer?.displayName ?? "Trò chuyện"}
-      subtitle={`Theo đơn #${orderId} · Không có chatbot`}
+      subtitle={`Đơn #${orderId}`}
       back
       footer={
         query.data && (
           <>
             {readOnly ? (
-              <Banner>
-                Đơn đã kết thúc. Bạn có thể xem lịch sử; không gửi tin mới.
-              </Banner>
+              <>
+                <Banner>Đơn đã kết thúc. Bạn vẫn có thể đọc lại cuộc trò chuyện.</Banner>
+                {draft.value.pending && <Button title="Kiểm tra tin vừa gửi" busy={busy} onPress={()=>{void send();}} />}
+              </>
             ) : (
               <>
                 <Field
@@ -119,13 +132,13 @@ function Chat() {
                   maxLength={1000}
                   editable={draft.ready && !busy && !draft.value.pending}
                   value={draft.value.text}
-                  onChangeText={(text) => draft.update({ text, pending: null })}
+                  onChangeText={(text) => { void draft.update({ text, pending: null }).catch(()=>{}); }}
                   placeholder="Nhắn người giao món…"
                 />
                 {draft.error && <Banner error>{draft.error}</Banner>}
                 <Label muted>
                   {draft.saved
-                    ? "Đã lưu nháp trên thiết bị"
+                    ? "Đã lưu tin nhắn nháp"
                     : draft.ready
                       ? "Tối đa 1.000 ký tự"
                       : "Đang khôi phục nháp…"}
@@ -151,7 +164,7 @@ function Chat() {
                 </View>
                 {!draft.value.pending && !readOnly && (
                   <Button
-                    title="Ảnh mẫu"
+                    title="Gửi ảnh minh họa"
                     variant="secondary"
                     disabled={!draft.ready}
                     busy={busy}
@@ -174,11 +187,12 @@ function Chat() {
         }}
       />
       {error && <Banner error>{error}</Banner>}
+      {draft.error&&<><Banner error>{draft.error}</Banner>{!draft.ready&&<Button title="Thử đọc lại tin nhắn nháp" onPress={()=>{void draft.reload();}} />}</>}
       {query.data && (
         <>
           {!readOnly && (
             <Button
-              title="Gọi thoại mô phỏng"
+              title="Gọi tài xế · dùng thử"
               variant="ghost"
               onPress={() =>
                 router.push({
@@ -189,12 +203,11 @@ function Chat() {
             />
           )}
           <Banner>
-            Hội thoại riêng của khách và tài xế theo đơn. Ảnh đính kèm dùng bộ
-            mẫu, không truy cập camera.
+            Nhắn nhau để giao món thuận tiện hơn. Hiện bạn có thể gửi ảnh minh họa có sẵn.
           </Banner>
           {hasOlder && messages.length >= 20 && (
             <Button
-              title="Tải tin trước"
+              title="Xem tin nhắn trước"
               busy={busy}
               variant="ghost"
               onPress={() => {
@@ -211,6 +224,7 @@ function Chat() {
             </Card>
           )}
           {messages.map((m) => (
+            <AnimatedChange changeKey={m.id} key={m.id}>
             <View
               key={m.id}
               style={{
@@ -246,6 +260,7 @@ function Chat() {
                 {dateTime(m.createdAt)}
               </Text>
             </View>
+            </AnimatedChange>
           ))}
         </>
       )}

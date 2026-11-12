@@ -37,6 +37,8 @@ export const checkoutService = (request: Requester) => ({
   },
   quote: async (input: QuoteInput): Promise<Quote> =>
     normalizeQuote(await request("/checkout/quotes", "POST", input)),
+  removeItem: (id: string, expectedVersion: number) =>
+    request<Cart>(`/cart/items/${encodeURIComponent(id)}?expectedVersion=${expectedVersion}`, 'DELETE'),
   place: (quoteId: string, expectedCartVersion: number, key: string) =>
     request<Attempt>(
       "/checkout/attempts",
@@ -46,6 +48,7 @@ export const checkoutService = (request: Requester) => ({
     ),
   byKey: (key: string) =>
     request<Attempt>(`/checkout/attempts/by-key/${encodeURIComponent(key)}`),
+  current: () => request<Attempt | null>("/checkout/attempts/current"),
   attempt: (id: string) => request<Attempt>(`/checkout/attempts/${id}`),
   resolve: (id: string) =>
     request<Attempt>(`/checkout/attempts/${id}/resolve`, "POST", {}),

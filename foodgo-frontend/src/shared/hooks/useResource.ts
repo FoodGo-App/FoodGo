@@ -8,6 +8,7 @@ import {
 import { AppState } from "react-native";
 import { useFocusEffect } from "expo-router";
 import { useApp } from "../../providers/AppProvider";
+import { explain } from "../theme/theme";
 type Result<T> = {
   scope: string;
   data: T | null;
@@ -19,13 +20,16 @@ export function useResource<T>(
   enabled = true,
   poll = false,
   key = "default",
+  combine?: (previous: T | null, incoming: T) => T,
 ) {
   const { session, revision } = useApp();
   const scope = `${session?.user.id ?? "guest"}:${key}`;
   const fn = useRef(load);
+  const combineRef = useRef(combine);
   useLayoutEffect(() => {
     fn.current = load;
-  }, [load]);
+    combineRef.current = combine;
+  }, [load, combine]);
   const [result, setResult] = useState<Result<T> | null>(null);
   const generation = useRef(0),
     focused = useRef(false),
@@ -44,18 +48,18 @@ export function useResource<T>(
       try {
         const value = await fn.current();
         if (g === generation.current)
-          setResult({
+          setResult((previous) => ({
             scope,
-            data: value,
+            data: combineRef.current ? combineRef.current(previous?.scope === scope ? previous.data : null, value) : value,
             error: null,
             updatedAt: new Date().toISOString(),
-          });
+          }));
       } catch (e) {
         if (g === generation.current)
           setResult((previous) => ({
             scope,
             data: previous?.scope === scope ? previous.data : null,
-            error: e instanceof Error ? e.message : "Không tải được dữ liệu.",
+            error: explain(e),
             updatedAt: previous?.scope === scope ? previous.updatedAt : null,
           }));
       } finally {

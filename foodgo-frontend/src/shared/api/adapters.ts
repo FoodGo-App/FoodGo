@@ -9,6 +9,7 @@ import type {
   Page,
   Quote,
 } from "../types/domain.ts";
+import {orderEventText,visibleOrderEvent} from './orderEvents.ts';
 type Wire = Record<string, unknown>;
 const object = (v: unknown): Wire =>
   v && typeof v === "object" ? (v as Wire) : {};
@@ -66,6 +67,8 @@ function normalizeLine(
         ? w.options
         : [...optionNames, ...snapshotOptions].join(" · "),
     note: str(w.note),
+    available: typeof w.available === 'boolean' ? w.available : undefined,
+    validationMessage: str(w.validationMessage) || undefined,
   };
 }
 export function normalizeCart(
@@ -89,8 +92,8 @@ export function normalizeQuote(value: unknown): Quote {
     expectedCartVersion: num(w.cartVersion ?? w.expectedCartVersion),
     items: rows(w.lines ?? w.items).map((v, i) => normalizeLine(v, i)),
     address: object(w.address) as unknown as Address,
-    addressId: str(object(w.address).id),
-    offerId: str(object(w.offer).id) || undefined,
+    addressId: str(object(w.address).id ?? w.addressId),
+    offerId: str(object(w.offer).id ?? w.offerId) || undefined,
     paymentMethod: w.paymentMethod as Quote["paymentMethod"],
     restaurantName: str(w.restaurantName, "Nhà hàng trong giỏ"),
     subtotal: num(w.subtotal),
@@ -144,11 +147,11 @@ export function normalizeOrder(value: unknown): Order {
           ? a
           : a.toLowerCase();
     }),
-    events: rows(w.events ?? w.history).map((v) => {
+    events: rows(w.events ?? w.history).filter(v=>visibleOrderEvent(str(object(v).eventType))).map((v) => {
       const e = object(v);
       return {
         id: str(e.id),
-        text: str(e.text ?? e.description ?? e.eventType),
+        text: orderEventText(str(e.eventType),str(e.text ?? e.description ?? e.eventType)),
         createdAt: str(e.createdAt),
       };
     }),
@@ -193,5 +196,8 @@ export function shouldKeepCheckoutReference(error: unknown) {
     "INVALID_ADDRESS",
     "ITEM_UNAVAILABLE",
     "INVALID_PAYMENT",
+    "INVALID_OPTIONS",
+    "INVALID_QUANTITY",
+    "NOT_FOUND",
   ].includes(code);
 }

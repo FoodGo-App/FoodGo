@@ -15,12 +15,17 @@ import { explain } from "../../../shared/theme/theme";
 export default function AccountScreen() {
   const { session, mode, logout, request } = useApp();
   const [busy, setBusy] = useState(false),
-    [message, setMessage] = useState<string | null>(null);
-  const setting = async (payload: unknown) => {
+    [message, setMessage] = useState<string | null>(null),
+    [walletChoice, setWalletChoice] = useState<string | null>(null),
+    [callChoice, setCallChoice] = useState<string | null>(null);
+  const setting = async (payload: { walletScenario?: string; callScenario?: string }) => {
+    if (busy) return;
     setBusy(true);
     try {
       await request("/demo/settings", "POST", payload);
-      setMessage("Đã lưu kịch bản cho lần diễn tập tiếp theo.");
+      if (payload.walletScenario) setWalletChoice(payload.walletScenario);
+      if (payload.callScenario) setCallChoice(payload.callScenario);
+      setMessage("Đã lưu lựa chọn cho lần dùng thử tiếp theo.");
     } catch (e) {
       setMessage(explain(e));
     } finally {
@@ -35,7 +40,7 @@ export default function AccountScreen() {
           <Card>
             <Heading>{session.user.displayName}</Heading>
             <Label muted>
-              {session.user.role} · {session.user.id}
+              {session.user.role === "CUSTOMER" ? "Khách hàng" : session.user.role === "DRIVER" ? "Tài xế" : "Nhà hàng"}
             </Label>
             {session.user.role === "CUSTOMER" ? (
               <Button
@@ -69,30 +74,32 @@ export default function AccountScreen() {
           {mode === "demo" && (
             <>
               <Banner>
-                Công cụ demo: đổi tài khoản qua đăng nhập để diễn tập khách →
-                quán → tài xế. Trong chế độ API, vai trò do máy chủ cấp.
+                Bạn đang dùng thử FoodGo. Chọn tài khoản khác để trải nghiệm
+                đặt món, chuẩn bị món hoặc giao hàng.
               </Banner>
               <Button
-                title="Đổi tài khoản demo"
+                title="Đổi tài khoản dùng thử"
                 variant="secondary"
                 onPress={() => router.push("/login")}
               />
               <Card>
-                <Heading>Kịch bản mô phỏng</Heading>
+                <Heading>Tùy chọn dùng thử</Heading>
                 <Label muted>
-                  Chỉ áp dụng trong demo, không gửi kết quả ví từ app lên API
-                  thật.
+                  Các lựa chọn này chỉ áp dụng cho lần dùng thử; không phát sinh
+                  thanh toán thật.
                 </Label>
                 <Chip
                   title="Ví thành công"
-                  selected={false}
+                  selected={walletChoice === "SUCCEEDED"}
+                  disabled={busy}
                   onPress={() => {
                     if (!busy) void setting({ walletScenario: "SUCCEEDED" });
                   }}
                 />
                 <Chip
-                  title="Ví thất bại"
-                  selected={false}
+                  title="Ví chưa thanh toán được"
+                  selected={walletChoice === "FAILED"}
+                  disabled={busy}
                   onPress={() => {
                     if (!busy) void setting({ walletScenario: "FAILED" });
                   }}
@@ -106,9 +113,10 @@ export default function AccountScreen() {
                           ? "Gọi: kết nối"
                           : value === "NO_ANSWER"
                             ? "Gọi: không trả lời"
-                            : "Gọi: lỗi"
+                            : "Gọi: chưa kết nối được"
                       }
-                      selected={false}
+                      selected={callChoice === value}
+                      disabled={busy}
                       onPress={() => {
                         if (!busy) void setting({ callScenario: value });
                       }}
@@ -124,8 +132,7 @@ export default function AccountScreen() {
       )}
       {message && <Banner>{message}</Banner>}
       <Label muted>
-        Ví, vị trí và cuộc gọi được mô phỏng. Không chuyển tiền, xin GPS hoặc
-        thu âm.
+        {mode === "demo" ? "Thanh toán, vị trí và cuộc gọi trong chế độ dùng thử đều được mô phỏng." : "Quản lý tài khoản và theo dõi công việc của bạn tại đây."}
       </Label>
     </Screen>
   );

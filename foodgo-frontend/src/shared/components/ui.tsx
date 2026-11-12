@@ -15,7 +15,8 @@ import type { TextInputProps, ViewStyle, StyleProp } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { router } from "expo-router";
 import { useApp } from "../../providers/AppProvider";
-import { colors, money } from "../theme/theme";
+import { AnimatedChange, MotionPressable } from "./Motion";
+import { colors, explain, money } from "../theme/theme";
 import type { CartItem, Quote, Order, Role } from "../types/domain";
 import { Panda, type PandaPose } from "./Panda";
 import { Brand } from "./Brand";
@@ -142,14 +143,14 @@ export function Button({
   accessibilityLabel?: string;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       testID={testID}
       accessibilityLabel={accessibilityLabel ?? title}
       accessibilityRole="button"
       accessibilityState={{ disabled: disabled || busy, busy }}
       disabled={disabled || busy}
       onPress={onPress}
-      style={({ pressed }) => ({
+      style={{
         minHeight: 50,
         borderRadius: 14,
         paddingHorizontal: 16,
@@ -164,12 +165,12 @@ export function Button({
               : variant === "danger"
                 ? "#FBE9E8"
                 : "transparent",
-        opacity: disabled || busy ? 0.55 : pressed ? 0.8 : 1,
+        opacity: disabled || busy ? 0.55 : 1,
         borderWidth: variant === "ghost" ? 1 : 0,
         borderColor: colors.line,
         flexDirection: "row",
         gap: 8,
-      })}
+      }}
     >
       {busy && (
         <ActivityIndicator
@@ -193,7 +194,7 @@ export function Button({
       >
         {title}
       </Text>
-    </Pressable>
+    </MotionPressable>
   );
 }
 export function Chip({
@@ -208,13 +209,14 @@ export function Chip({
   disabled?: boolean;
 }) {
   return (
-    <Pressable
+    <MotionPressable
       accessibilityRole="button"
       accessibilityState={{ selected, disabled }}
       disabled={disabled}
       onPress={onPress}
       style={[
         styles.chip,
+        disabled && { opacity: 0.55 },
         selected && {
           backgroundColor: colors.brand,
           borderColor: colors.brand,
@@ -230,7 +232,7 @@ export function Chip({
       >
         {title}
       </Text>
-    </Pressable>
+    </MotionPressable>
   );
 }
 export function Field({ label, ...props }: TextInputProps & { label: string }) {
@@ -284,7 +286,7 @@ export function LoadState({
   return loading ? (
     <View style={{ padding: 30, gap: 12 }}>
       <ActivityIndicator color={colors.brand} />
-      <Label muted>Đang tải dữ liệu…</Label>
+      <Label muted>Đang tải…</Label>
     </View>
   ) : error ? (
     <View style={{ gap: 10 }}>
@@ -369,10 +371,12 @@ export function Screen({
               )}
             </View>
             {mode === "demo" && (
-              <Text style={[styles.muted, { fontSize: 11 }]}>Chế độ demo</Text>
+              <Text style={[styles.muted, { fontSize: 11 }]}>Chế độ dùng thử</Text>
             )}
           </View>
-          <Text style={styles.title}>{title}</Text>
+          <AnimatedChange changeKey={title}>
+            <Text style={styles.title}>{title}</Text>
+          </AnimatedChange>
           {subtitle && <Label muted>{subtitle}</Label>}
           {storageError && <Banner error>{storageError}</Banner>}
         </View>
@@ -414,11 +418,11 @@ export function RequireRole({
     return <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />;
   if (!session || !roles.includes(session.user.role))
     return (
-      <Screen title={session ? "Không đúng vai trò" : "Đăng nhập để tiếp tục"}>
+      <Screen title={session ? "Mở trang dành cho bạn" : "Đăng nhập để tiếp tục"}>
         <Empty
           title={session ? "Mở công việc của bạn" : "Panda đang chờ bạn"}
           pose="hello"
-          detail="Dữ liệu đơn và liên hệ chỉ dành cho tài khoản có quyền."
+          detail="Đăng nhập bằng tài khoản đặt hoặc giao đơn để xem thông tin này."
           action={{
             title: session ? "Về tài khoản" : "Đăng nhập",
             onPress: () =>
@@ -502,6 +506,7 @@ export function Confirm({
   return (
     <View style={{ gap: 10 }}>
       {open ? (
+        <AnimatedChange changeKey="confirm">
         <Card>
           <Heading>{title}</Heading>
           <Label>{detail}</Label>
@@ -525,13 +530,14 @@ export function Confirm({
                   setError(null);
                   onConfirm()
                     .then(() => setOpen(false))
-                    .catch((e) => setError(e.message))
+                    .catch((e) => setError(explain(e)))
                     .finally(() => setBusy(false));
                 }}
               />
             </View>
           </View>
         </Card>
+        </AnimatedChange>
       ) : (
         <Button title={title} variant="danger" onPress={() => setOpen(true)} />
       )}

@@ -2,7 +2,7 @@
 
 Spring Boot 4.1.2 · Java 21 · Maven Wrapper · MariaDB · Flyway.
 
-**Trạng thái: khung dự án và phần nền ban đầu để nhóm tiếp tục phát triển. Chưa hoàn tất nghiệp vụ M01–M05.**
+**Trạng thái: đã triển khai luồng API M03–M05 và seed local; M01–M02 có phần nền để thành viên phụ trách tiếp tục hoàn thiện.**
 
 ## Chạy trên máy cá nhân
 
@@ -53,7 +53,7 @@ foodgo-backend/
 │   ├── ordering/                # M03: checkout, thanh toán mô phỏng, đơn hàng
 │   ├── fulfillment/             # M04: quán xử lý đơn, tài xế giao hàng
 │   ├── communication/           # M05: chat, cuộc gọi mô phỏng, đánh giá
-│   └── bootstrap/               # Dành cho seed local, hiện chưa có seed chạy
+│   └── bootstrap/               # Seed local idempotent (5 tài khoản và catalog/giỏ mẫu)
 ├── src/main/resources/
 │   ├── application.properties   # Cấu hình chung, không chứa mật khẩu thật
 │   └── db/migration/            # Schema Flyway
@@ -75,16 +75,16 @@ foodgo-backend/
 .\mvnw.cmd -DskipTests package
 ```
 
-Test context cần MariaDB chạy và cấu hình local hợp lệ. Test context sẽ chạy migration trên database cấu hình; dùng database riêng cho kiểm thử khi thêm test ghi dữ liệu. Hiện có 4 test: khởi tạo Spring context và 3 test quy tắc trạng thái/COD. Chưa có bộ kiểm thử đầy đủ theo module.
+Test context cần MariaDB chạy và cấu hình local hợp lệ. Test context sẽ chạy migration trên database cấu hình; dùng database riêng cho kiểm thử khi thêm test ghi dữ liệu. Đã xác minh 60 test gồm unit, HTTP, cạnh tranh thao tác và seed trên MariaDB thật. Các test tích hợp được bật riêng trên database `fooddriver_it_*`; xem runbook bên dưới.
 
 ## Tích hợp Expo
 
 API dùng tiền tố `/api/v1`, cổng mặc định `8080`. Điện thoại dùng IP LAN của máy chạy backend, ví dụ `http://<IP_LAN>:8080/api/v1`; `localhost` trên điện thoại trỏ về chính điện thoại. Expo Go gọi backend qua HTTP; chỉ backend kết nối MariaDB.
 
-Health và catalog hiện có API đọc; catalog trống khi chưa nạp dữ liệu. **Chưa có tài khoản mẫu được seed; không có tài khoản đăng nhập sẵn.** Các thuộc tính `foodgo.seed-*`, `foodgo.wallet-scenario`, `foodgo.call-scenario` trong cấu hình là chỗ dành cho phần triển khai tiếp theo, chưa kích hoạt chức năng đó.
+Seed tự thêm dữ liệu mẫu khi `foodgo.seed-enabled=true`: `customer-1`, `customer-2`, `restaurant-1`, `driver-1`, `driver-2`, mật khẩu local mặc định `FoodGo@123`. Dữ liệu/credential đã có được giữ nguyên. Xem [dữ liệu mẫu](docs/SEED_DATA.md) và [hướng dẫn chạy luồng API](docs/API_FLOW_RUNBOOK.md). Ví, cuộc gọi và tracking dùng mô phỏng theo SRS.
 
 ## Đưa lên Git
 
 Đưa source, `pom.xml`, wrapper, migration, tài liệu và file `.example` lên Git. Không đưa `application-local.properties`, `.env`, `target/`, `.idea/`, log hay dữ liệu runtime lên Git. Nếu file chứa mật khẩu từng được theo dõi trước đó, `.gitignore` không tự gỡ nó khỏi lịch sử Git.
 
-Chưa tự tạo commit hoặc push repository; người phụ trách nhóm chọn repository và nhánh bàn giao.
+Repository nhóm: https://github.com/HonaJnh/FoodGo. Thay đổi mới cần được review theo nhánh trước khi tích hợp.

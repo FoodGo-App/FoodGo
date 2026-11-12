@@ -43,11 +43,11 @@ export const statusLabels: Record<string, string> = {
 const messages: Record<string, string> = {
   AUTH_REQUIRED: "Bạn cần đăng nhập để tiếp tục.",
   FORBIDDEN: "Tài khoản không có quyền thực hiện thao tác này.",
-  NOT_FOUND: "Không tìm thấy dữ liệu trong phạm vi tài khoản.",
+  NOT_FOUND: "Không tìm thấy nội dung này. Hãy tải lại và thử lại.",
   INVALID_OFFER:
     "Ưu đãi chưa đủ điều kiện với giỏ hoặc phương thức thanh toán.",
-  QUOTE_EXPIRED: "Báo giá đã hết hạn. Hãy lấy báo giá mới và kiểm tra lại.",
-  QUOTE_CHANGED: "Nội dung hoặc giá đã thay đổi. Hãy kiểm tra báo giá mới.",
+  QUOTE_EXPIRED: "Giá đã hết thời gian giữ. Hãy cập nhật và kiểm tra lại.",
+  QUOTE_CHANGED: "Món hoặc giá đã thay đổi. Hãy kiểm tra lại trước khi đặt.",
   CART_VERSION_CONFLICT: "Giỏ đã thay đổi. Hãy tải lại trước khi xác nhận.",
   ORDER_STATE_CONFLICT:
     "Đơn đã chuyển trạng thái. Hãy tải lại để xem thao tác phù hợp.",
@@ -58,11 +58,33 @@ const messages: Record<string, string> = {
   REVIEW_ALREADY_EXISTS: "Đơn đã được đánh giá. Hãy xem đánh giá đã lưu.",
   CALL_NOT_ALLOWED: "Hiện không thể mở cuộc gọi cho đơn này.",
   CHECKOUT_IN_PROGRESS: "Một lần thanh toán đang chờ. Hãy kiểm tra lại lần đó.",
-  COD_CONFIRMATION_REQUIRED: "Cần xác nhận đã thu đủ tiền COD.",
+  COD_CONFIRMATION_REQUIRED: "Hãy xác nhận đã thu đủ tiền mặt từ khách.",
+  COD_NOT_ALLOWED: "Đơn này không dùng thanh toán tiền mặt. Hãy chọn cách thanh toán khác.",
+  WALLET_FAILED: "Ví chưa thanh toán được. Giỏ của bạn vẫn được giữ để thử lại.",
+  INVALID_ADDRESS: "Hãy chọn địa chỉ giao hàng hợp lệ trước khi tiếp tục.",
+  INVALID_CREDENTIALS: "Tên đăng nhập hoặc mật khẩu chưa đúng. Hãy kiểm tra lại.",
+  INVALID_PAYMENT: "Cách thanh toán này chưa dùng được. Hãy chọn cách khác.",
+  INVALID_MESSAGE: "Tin nhắn cần có nội dung và không quá 1.000 ký tự.",
+  INVALID_REASON: "Hãy nhập lý do trong khoảng 1 đến 300 ký tự.",
+  REASON_REQUIRED: "Hãy nhập lý do để tiếp tục.",
+  INVALID_REVIEW: "Hãy chọn số sao và kiểm tra lại nội dung đánh giá.",
+  ORDER_NOT_DELIVERED: "Bạn có thể đánh giá sau khi đơn được giao thành công.",
+  IDEMPOTENCY_CONFLICT: "Yêu cầu trước đã được ghi nhận. Hãy tải lại để xem kết quả.",
+  IDEMPOTENCY_KEY_REQUIRED: "Chưa gửi được yêu cầu. Hãy tải lại rồi thử lại.",
+  MESSAGE_KEY_CONFLICT: "Tin nhắn trước đã được ghi nhận. Hãy tải lại hội thoại.",
+  API_NOT_CONFIGURED: "FoodGo chưa kết nối được dịch vụ. Vui lòng thử lại sau.",
+  HTTP_ERROR: "Chưa thực hiện được yêu cầu. Hãy tải lại rồi thử lại.",
   NETWORK_ERROR:
     "Không kết nối được máy chủ. Hãy kiểm tra lại kết quả trước khi gửi thêm.",
 };
 export const explain = (error: unknown) => {
-  const code = error instanceof Error ? error.message : String(error);
-  return messages[code] ?? code;
+  const detail = error && typeof error === "object" ? error : null;
+  const code = detail && "code" in detail && typeof detail.code === "string"
+    ? detail.code
+    : error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (Object.hasOwn(messages, code)) return messages[code];
+  // Preserve useful Vietnamese guidance, never expose transport/debug text.
+  const text = error instanceof Error ? error.message : typeof error === "string" ? error : "";
+  if (/[^\x00-\x7F]/.test(text) && !/\b(API|HTTP|idempotency|version|module|M0[1-5])\b|[A-Z]+_[A-Z_]+/i.test(text)) return text;
+  return "Chưa thực hiện được yêu cầu. Hãy tải lại rồi thử lại.";
 };

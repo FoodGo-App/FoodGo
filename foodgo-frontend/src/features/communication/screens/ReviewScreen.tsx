@@ -22,6 +22,7 @@ import { communicationService } from "../services/communicationService";
 import { orderService } from "../../orders/services/orderService";
 import { colors, explain } from "../../../shared/theme/theme";
 import type { Review, ReviewInput } from "../../../shared/types/domain";
+import { SuccessMotion } from "../../../shared/components/Motion";
 export default function ReviewScreen() {
   return (
     <RequireRole roles={["CUSTOMER"]}>
@@ -52,7 +53,7 @@ function ReviewForm() {
     false,
     orderId,
   );
-  const draft = useDraft<ReviewInput>("review", orderId, {
+  const draft = useDraft<ReviewInput & {pending?:ReviewInput|null}>("review", orderId, {
     stars: 5,
     tags: [],
     note: "",
@@ -60,16 +61,20 @@ function ReviewForm() {
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const data = query.data;
-  const value = data?.review ?? draft.value;
+  const value = data?.review ?? draft.value.pending ?? draft.value;
   const readOnly = !!data?.review || data?.order.status !== "DELIVERED";
   const submit = async () => {
     if (busy || readOnly) return;
     setBusy(true);
     setError(null);
     try {
-      await service.sendReview(orderId, draft.value);
+      const input=draft.value.pending??{stars:draft.value.stars,tags:draft.value.tags,note:draft.value.note};
+      await draft.update({...input,pending:input});
+      await service.sendReview(orderId, input);
+      await draft.update({...input,pending:null});
       await query.reload();
     } catch (e) {
+      if((e as {code?:string}).code==="INVALID_REVIEW")await draft.update({...draft.value,pending:null}).catch(()=>{});
       setError(explain(e));
       await query.reload();
     } finally {
@@ -84,7 +89,7 @@ function ReviewForm() {
       footer={
         data && !readOnly ? (
           <Button
-            title="Gửi đánh giá"
+            title={draft.value.pending?"Kiểm tra đánh giá vừa gửi":"Gửi đánh giá"}
             busy={busy}
             disabled={!draft.ready || value.note.length > 300}
             onPress={() => {
@@ -105,7 +110,7 @@ function ReviewForm() {
       {data && (
         <>
           <View style={{ alignItems: "center" }}>
-            <Panda size={150} pose={data.review ? "success" : "hello"} />
+            {data.review?<SuccessMotion><Panda size={150} pose="success" /></SuccessMotion>:<Panda size={150} pose="hello" />}
             <Heading>{data.order.driverName ?? "Tài xế giao món"}</Heading>
           </View>
           {data.order.status !== "DELIVERED" && (
@@ -116,6 +121,7 @@ function ReviewForm() {
               Đánh giá đã được lưu. Mỗi đơn có một đánh giá tài xế.
             </Banner>
           )}
+          {!data.review&&draft.value.pending&&<Banner>Đánh giá đang chờ xác nhận. Kiểm tra lại để tiếp tục với nội dung vừa gửi nhé.</Banner>}
           <View
             style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
           >
@@ -125,8 +131,8 @@ function ReviewForm() {
                 title={stars <= value.stars ? "★" : "☆"}
                 accessibilityLabel={`${stars} sao`}
                 variant="ghost"
-                disabled={readOnly || !draft.ready}
-                onPress={() => draft.update({ ...value, stars })}
+                disabled={readOnly || !draft.ready || busy || !!draft.value.pending}
+                onPress={() => {void draft.update({ ...value, stars,pending:null }).catch(()=>{});}}
               />
             ))}
           </View>
@@ -142,15 +148,15 @@ function ReviewForm() {
                   key={tag}
                   title={label}
                   selected={value.tags.includes(tag)}
-                  disabled={readOnly || !draft.ready || busy}
+                  disabled={readOnly || !draft.ready || busy || !!draft.value.pending}
                   onPress={() => {
                     if (!readOnly && draft.ready)
-                      draft.update({
+                      void draft.update({
                         ...value,
                         tags: value.tags.includes(tag)
                           ? value.tags.filter((t) => t !== tag)
                           : [...value.tags, tag],
-                      });
+                      }).catch(()=>{});
                   }}
                 />
               ))}
@@ -158,10 +164,10 @@ function ReviewForm() {
             <Field
               label="Nhận xét (không bắt buộc)"
               multiline
-              editable={!readOnly && draft.ready && !busy}
+              editable={!readOnly && draft.ready && !busy && !draft.value.pending}
               value={value.note}
               maxLength={300}
-              onChangeText={(note) => draft.update({ ...value, note })}
+              onChangeText={(note) => {void draft.update({ ...value, note,pending:null }).catch(()=>{});}}
             />
             <Text style={[styles.muted, { color: colors.muted }]}>
               {value.note.length}/300 ·{" "}
@@ -172,6 +178,7 @@ function ReviewForm() {
                   : "Nhận xét của bạn sẽ gắn với đơn này."}
             </Text>
             {draft.error && <Label>{draft.error}</Label>}
+            {draft.error&&!draft.ready&&<Button title="Thử đọc lại đánh giá nháp" onPress={()=>{void draft.reload();}} />}
           </Card>
         </>
       )}

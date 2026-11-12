@@ -5,11 +5,11 @@
 | Thư mục | Nội dung |
 |---|---|
 | [foodgo-frontend](foodgo-frontend/README.md) | Ứng dụng mobile và giao diện các vai trò, mascot panda, chế độ demo và lớp gọi API |
-| [foodgo-backend](foodgo-backend/README.md) | Khung backend theo module, code nền, schema MariaDB và hướng dẫn chạy |
+| [foodgo-backend](foodgo-backend/README.md) | API M03–M05, nền M01–M02, schema MariaDB và seed local |
 
 ## Trạng thái bàn giao
 
-Frontend có các luồng M03–M05 ở chế độ demo và phần gọi API. Backend hiện là **khung và code nền**, chưa hoàn tất nghiệp vụ M01–M05; chưa có seed tài khoản/dữ liệu mẫu. Chưa thể coi đây là một hệ thống FE–BE hoàn chỉnh.
+Frontend có các luồng M03–M05 ở chế độ demo và phần gọi API. Backend đã có luồng API M03–M05: checkout/đơn hàng, quán/tài xế, chat/call mô phỏng/đánh giá; seed local tạo tài khoản và dữ liệu đầu vào. M01–M02 vẫn cần thành viên phụ trách hoàn thiện các use case ngoài phần nền. Xem [runbook BE](foodgo-backend/docs/API_FLOW_RUNBOOK.md).
 
 Thành viên nhận backend M01–M02 đọc [hướng dẫn bàn giao](foodgo-backend/docs/HANDOFF_M01_M02.md) và [kiến trúc](foodgo-backend/docs/ARCHITECTURE.md). M01 thuộc `account`, M02 thuộc `catalog` và `cart`; M03–M05 lần lượt thuộc `ordering`, `fulfillment`, `communication`.
 

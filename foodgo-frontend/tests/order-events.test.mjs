@@ -1,0 +1,4 @@
+import {test} from 'node:test';import assert from 'node:assert/strict';
+import {orderEventText,visibleOrderEvent} from '../src/shared/api/orderEvents.ts';
+test('server lifecycle codes become user-facing history while the reason is retained',()=>{assert.equal(orderEventText('ORDER_CREATED','ORDER_CREATED'),'Đơn hàng đã được đặt');assert.equal(orderEventText('DELIVERY_ISSUE','DELIVERY_ISSUE · Khách chưa nghe máy'),'Tài xế báo khó khăn khi giao · Khách chưa nghe máy');assert.equal(orderEventText('FUTURE_INTERNAL_STATE','FUTURE_INTERNAL_STATE'),'Thông tin đơn hàng đã được cập nhật');});
+test('dataset bookkeeping stays out of customer timeline',()=>{assert.equal(visibleOrderEvent('SAMPLE_ORDER_CREATED'),false);assert.equal(visibleOrderEvent('SAMPLE_DATA_READY'),false);assert.equal(visibleOrderEvent('DELIVERED'),true);});

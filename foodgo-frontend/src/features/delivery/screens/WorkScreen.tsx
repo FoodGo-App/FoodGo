@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { router } from "expo-router";
 import { View } from "react-native";
 import { useApp } from "../../../providers/AppProvider";
@@ -28,14 +28,16 @@ export default function WorkScreen() {
   );
 }
 function Work() {
-  const { request, session } = useApp();
+  const { request, session, mode } = useApp();
   const role = session!.user.role;
+  const [now,setNow]=useState(Date.now);
   const [tab, setTab] = useState("active"),
     [page, setPage] = useState(0),
     [previous, setPrevious] = useState<(Order | DriverOffer)[]>([]),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const service = deliveryService(request);
+  useEffect(()=>{if(role!=="DRIVER"||tab!=="offers")return;const timer=setInterval(()=>setNow(Date.now()),1000);return()=>clearInterval(timer);},[role,tab]);
   const query = useResource<Page<Order | DriverOffer>>(
     () =>
       role === "RESTAURANT"
@@ -49,7 +51,7 @@ function Work() {
   );
   const items = [...previous, ...(query.data?.content ?? [])].filter(
     (x, i, a) => a.findIndex((y) => y.id === x.id) === i,
-  );
+  ).filter(item=>!("codAmount" in item)||Date.parse(item.expiresAt)>now);
   const action = async (offer: DriverOffer, accept: boolean) => {
     if (busy) return;
     setBusy(true);
@@ -61,7 +63,7 @@ function Work() {
       );
       if (accept)
         router.push({ pathname: "/orders/[id]", params: { id: result.id } });
-      else await query.reload();
+      else {setPrevious(previous=>previous.filter(item=>item.id!==offer.id));await query.reload();}
     } catch (e) {
       setError(explain(e));
       await query.reload();
@@ -84,7 +86,7 @@ function Work() {
       }}
     >
       <Button
-        title="Tài khoản / đổi vai trò demo"
+        title={mode === "demo" ? "Tài khoản dùng thử" : "Tài khoản của bạn"}
         variant="ghost"
         onPress={() => router.push("/account")}
       />
@@ -121,19 +123,20 @@ function Work() {
           title={
             tab === "offers" ? "Chưa có đề xuất giao" : "Chưa có công việc"
           }
-          detail="Các đơn đúng phạm vi tài khoản sẽ xuất hiện ở đây."
+          detail="Đơn hàng dành cho bạn sẽ xuất hiện ở đây. Kéo xuống để cập nhật."
         />
       )}
       {items.map((item) =>
         "codAmount" in item ? (
           <Card key={item.id}>
             <Heading>{item.restaurantName}</Heading>
+            <Label muted>Còn {Math.max(0,Math.ceil((Date.parse(item.expiresAt)-now)/1000))} giây để nhận chuyến</Label>
             <Label muted>
               Khu vực giao:{" "}
               {item.areaCode === "AREA_A" ? "Khu vực A" : item.areaCode}
             </Label>
             <View style={styles.between}>
-              <Label>COD cần thu</Label>
+              <Label>Tiền mặt cần thu</Label>
               <Heading>{money(item.codAmount)}</Heading>
             </View>
             <Banner>

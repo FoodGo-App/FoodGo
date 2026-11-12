@@ -18,9 +18,9 @@ import { colors, explain } from "../../../shared/theme/theme";
 type CallState =
   "CHECKING" | "DIALING" | "CONNECTED" | "NO_ANSWER" | "FAILED" | "ENDED";
 const labels: Record<CallState, string> = {
-  CHECKING: "Đang kiểm tra quyền gọi",
+  CHECKING: "Đang chuẩn bị cuộc gọi…",
   DIALING: "Đang kết nối…",
-  CONNECTED: "Đã kết nối mô phỏng",
+  CONNECTED: "Đã kết nối · dùng thử",
   NO_ANSWER: "Không có người trả lời",
   FAILED: "Không kết nối được",
   ENDED: "Cuộc gọi đã kết thúc",
@@ -87,7 +87,7 @@ function Call() {
           .call(orderId)
           .then((result) => {
             if (!result.allowed)
-              throw new Error("Quyền gọi theo đơn đã hết hiệu lực.");
+              throw new Error("Đơn đã kết thúc nên cuộc gọi được đóng lại.");
           })
           .catch((e) => {
             if (g === generation.current) {
@@ -121,7 +121,7 @@ function Call() {
   }, [state]);
   const active = ["DIALING", "CONNECTED", "CHECKING"].includes(state);
   return (
-    <Screen title="Cuộc gọi mô phỏng" subtitle={`Theo đơn #${orderId}`} back>
+    <Screen title="Cuộc gọi dùng thử" subtitle={`Đơn #${orderId}`} back>
       <View style={{ alignItems: "center", paddingVertical: 24, gap: 20 }}>
         <Panda size={180} pose={state === "CONNECTED" ? "inbox" : "waiting"} />
         <Heading>{labels[state]}</Heading>

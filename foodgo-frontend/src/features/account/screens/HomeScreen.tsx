@@ -111,7 +111,7 @@ export default function HomeScreen() {
             />
           </Card>
           <Button
-            title="Mở tài khoản / công cụ demo"
+            title="Tài khoản dùng thử"
             variant="ghost"
             onPress={() => router.push("/account")}
           />
@@ -119,8 +119,8 @@ export default function HomeScreen() {
       )}
       {mode === "api" && (
         <Banner>
-          Nhận giỏ và địa chỉ từ module M01/M02 qua API. Chưa có dữ liệu thì màn
-          kiểm tra đơn hiển thị hướng dẫn thay vì tự tạo món giả.
+          Bạn có thể kiểm tra giỏ đã chọn và theo dõi đơn hàng tại đây.
+          Nếu giỏ đang trống, hãy quay lại khi bạn đã chọn món.
         </Banner>
       )}
     </Screen>
