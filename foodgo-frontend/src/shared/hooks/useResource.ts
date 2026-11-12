@@ -20,8 +20,8 @@ export function useResource<T>(
   poll = false,
   key = "default",
 ) {
-  const { session, revision } = useApp();
-  const scope = `${session?.user.id ?? "guest"}:${key}`;
+  const { session, revision, sessionGeneration } = useApp();
+  const scope = `${sessionGeneration}:${session?.user.id ?? "guest"}:${key}`;
   const fn = useRef(load);
   useLayoutEffect(() => {
     fn.current = load;
@@ -50,6 +50,7 @@ export function useResource<T>(
             error: null,
             updatedAt: new Date().toISOString(),
           });
+        return g === generation.current;
       } catch (e) {
         if (g === generation.current)
           setResult((previous) => ({
@@ -58,6 +59,7 @@ export function useResource<T>(
             error: e instanceof Error ? e.message : "Không tải được dữ liệu.",
             updatedAt: previous?.scope === scope ? previous.updatedAt : null,
           }));
+        return false;
       } finally {
         if (fetching.current === g) fetching.current = null;
       }

@@ -1,0 +1,5 @@
+import {test} from "node:test";
+import assert from "node:assert/strict";
+import {addressService,blankAddress,validateAddress} from "../src/features/account/addressService.ts";
+test("address validation rejects unsupported area/point, bad phone and field limits",()=>{const good={...blankAddress,recipientName:"Test",recipientPhone:"0900000000",addressText:"Test street"};assert.equal(validateAddress(good),null);for(const patch of [{recipientPhone:"123"},{recipientName:" "},{label:"x".repeat(41)},{areaCode:"OTHER"},{mapPointCode:"OTHER"},{addressText:"x".repeat(256)}])assert.equal(typeof validateAddress({...good,...patch}),"string");});
+test("address service uses API-04–07 and sends no owner or ID in write payload",async()=>{const calls=[];const s=addressService(async(...args)=>{calls.push(args);return []});await s.list();await s.save({...blankAddress,customerId:"other",id:"injected"});await s.save(blankAddress,"12");await s.remove("12");assert.deepEqual(calls.map(c=>c.slice(0,2)),[["/addresses"],["/addresses","POST"],["/addresses/12","PUT"],["/addresses/12","DELETE"]]);assert.equal("customerId" in calls[1][2],false);assert.equal("id" in calls[1][2],false);});

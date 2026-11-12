@@ -9,7 +9,9 @@
 
 ## Trạng thái bàn giao
 
-Frontend có các luồng M03–M05 ở chế độ demo và phần gọi API. Backend hiện là **khung và code nền**, chưa hoàn tất nghiệp vụ M01–M05; chưa có seed tài khoản/dữ liệu mẫu. Chưa thể coi đây là một hệ thống FE–BE hoàn chỉnh.
+M01–M02 đã có FE/BE nối API thật: 12 kịch bản Chrome/CDP PASS trên database kiểm thử riêng; backend 45 test đạt. Người dùng đã trực tiếp nghiệm thu Android/Expo Go PASS cho catalog/yêu thích/giỏ, địa chỉ, restore/logout và tách dữ liệu A/B. iOS và UI dòng giỏ mất khả dụng chưa kiểm tra. M03–M05 giữ giao diện/demo của nhóm, chưa coi API nghiệp vụ các module đó hoàn tất.
+
+Đọc [bàn giao M01–M02](docs/M01_M02_HANDOVER.md), [checklist demo](foodgo-frontend/docs/M01_M02_DEMO.md) và [chuẩn bị mobile](docs/M01_M02_MOBILE.md) để chạy đúng ứng dụng thông thường hoặc test launcher. Cấu hình test không fallback sang database ứng dụng.
 
 Thành viên nhận backend M01–M02 đọc [hướng dẫn bàn giao](foodgo-backend/docs/HANDOFF_M01_M02.md) và [kiến trúc](foodgo-backend/docs/ARCHITECTURE.md). M01 thuộc `account`, M02 thuộc `catalog` và `cart`; M03–M05 lần lượt thuộc `ordering`, `fulfillment`, `communication`.
 
@@ -25,7 +27,7 @@ Mặc định dùng demo. Xem `.env.example` và README frontend khi cấu hình
 
 ## Backend
 
-Cần JDK 21 và MariaDB. Tạo database `fooddriver`; sao chép `application-local.properties.example` thành `application-local.properties` trong thư mục backend và điền tài khoản MariaDB cá nhân. Không ghi đè file local đã cấu hình.
+Cần JDK 21+ và MariaDB (phiên nghiệm thu dùng JDK 22, pom target 21). Tạo database `fooddriver`; sao chép `application-local.properties.example` thành `application-local.properties` trong thư mục backend và điền tài khoản MariaDB cá nhân. Không ghi đè file local đã cấu hình.
 
 ```powershell
 cd foodgo-backend
@@ -38,7 +40,7 @@ Kiểm tra `http://localhost:8080/api/v1/health`. Flyway áp dụng migration kh
 
 Frontend: `npm test`, `npm run lint`, `npm run typecheck`.
 
-Backend: `mvnw.cmd test` (cần MariaDB và cấu hình local). Dùng database kiểm thử riêng khi bổ sung test ghi dữ liệu.
+Backend: bộ test context/HTTP bắt buộc database `fooddriver_m01_test` và account riêng qua guard/probe. Thiết lập đúng ba biến `FOODGO_TEST_DB_*` theo [bàn giao](docs/M01_M02_HANDOVER.md) trước khi chạy `mvnw.cmd test`; cấu hình local của ứng dụng không thay thế cấu hình test.
 
 ## Làm việc nhóm
 

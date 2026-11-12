@@ -2,7 +2,9 @@
 
 Spring Boot 4.1.2 · Java 21 · Maven Wrapper · MariaDB · Flyway.
 
-**Trạng thái: khung dự án và phần nền ban đầu để nhóm tiếp tục phát triển. Chưa hoàn tất nghiệp vụ M01–M05.**
+**M01–M02 đã nối FE–BE thật trên DB test riêng: 12 kịch bản UI/API PASS; backend 45 test đạt. Các luồng M01–M02 chính trên Android/Expo Go đã được người dùng trực tiếp nghiệm thu PASS, gồm restore/logout và tách dữ liệu A/B. M03–M05 chưa nghiệm thu API trong phạm vi này.**
+
+Hướng dẫn hiện hành: [bàn giao/chạy lại sau reboot](../docs/M01_M02_HANDOVER.md). Các bước chạy cá nhân dưới đây là ứng dụng thường :8080/fooddriver; test launcher dùng :18080/fooddriver_m01_test, account và cấu hình riêng.
 
 ## Chạy trên máy cá nhân
 
@@ -53,7 +55,7 @@ foodgo-backend/
 │   ├── ordering/                # M03: checkout, thanh toán mô phỏng, đơn hàng
 │   ├── fulfillment/             # M04: quán xử lý đơn, tài xế giao hàng
 │   ├── communication/           # M05: chat, cuộc gọi mô phỏng, đánh giá
-│   └── bootstrap/               # Dành cho seed local, hiện chưa có seed chạy
+│   └── bootstrap/               # Fixture local chỉ chạy khi profile local + opt-in rõ ràng
 ├── src/main/resources/
 │   ├── application.properties   # Cấu hình chung, không chứa mật khẩu thật
 │   └── db/migration/            # Schema Flyway
@@ -75,13 +77,13 @@ foodgo-backend/
 .\mvnw.cmd -DskipTests package
 ```
 
-Test context cần MariaDB chạy và cấu hình local hợp lệ. Test context sẽ chạy migration trên database cấu hình; dùng database riêng cho kiểm thử khi thêm test ghi dữ liệu. Hiện có 4 test: khởi tạo Spring context và 3 test quy tắc trạng thái/COD. Chưa có bộ kiểm thử đầy đủ theo module.
+Test context/HTTP yêu cầu FOODGO_TEST_DB_URL, FOODGO_TEST_DB_USERNAME, FOODGO_TEST_DB_PASSWORD riêng. Guard chặn trước refresh/Flyway; TestDatabaseProbe kiểm tra account không truy cập được fooddriver. Xem bàn giao trước khi chạy lệnh test bên trên. Bộ backend gần nhất: 45 tests, 0 failures/errors/skipped; không dùng cấu hình local để fallback test.
 
 ## Tích hợp Expo
 
 API dùng tiền tố `/api/v1`, cổng mặc định `8080`. Điện thoại dùng IP LAN của máy chạy backend, ví dụ `http://<IP_LAN>:8080/api/v1`; `localhost` trên điện thoại trỏ về chính điện thoại. Expo Go gọi backend qua HTTP; chỉ backend kết nối MariaDB.
 
-Health và catalog hiện có API đọc; catalog trống khi chưa nạp dữ liệu. **Chưa có tài khoản mẫu được seed; không có tài khoản đăng nhập sẵn.** Các thuộc tính `foodgo.seed-*`, `foodgo.wallet-scenario`, `foodgo.call-scenario` trong cấu hình là chỗ dành cho phần triển khai tiếp theo, chưa kích hoạt chức năng đó.
+M01/M02 có API auth, địa chỉ, catalog, yêu thích và giỏ. Catalog có thể trống trên schema mới; không có tài khoản đăng nhập triển khai được nhúng trong gói. Fixture local cần profile local và foodgo.seed-enabled=true rõ ràng; mặc định tắt. Không tự seed fooddriver. TestServerLauncher tạo fixture riêng trong database test và ghi metadata không chứa password/token. Wallet/call thuộc phần nhóm M03–M05.
 
 ## Đưa lên Git
 

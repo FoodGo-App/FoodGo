@@ -13,7 +13,8 @@ import {
 } from "react-native";
 import type { TextInputProps, ViewStyle, StyleProp } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { router } from "expo-router";
+import { router, usePathname, useLocalSearchParams } from "expo-router";
+import { loginHref, captureReturnTo } from "../../features/account/loginReturn";
 import { useApp } from "../../providers/AppProvider";
 import { colors, money } from "../theme/theme";
 import type { CartItem, Quote, Order, Role } from "../types/domain";
@@ -299,6 +300,7 @@ export function Screen({
   children,
   footer,
   back = false,
+  onBack,
   onRefresh,
   scroll = true,
 }: {
@@ -307,6 +309,7 @@ export function Screen({
   children: React.ReactNode;
   footer?: React.ReactNode;
   back?: boolean;
+  onBack?: () => void;
   onRefresh?: () => void;
   scroll?: boolean;
 }) {
@@ -347,9 +350,8 @@ export function Screen({
                       minHeight: 44,
                       justifyContent: "center",
                     }}
-                    onPress={() =>
-                      router.canGoBack() ? router.back() : router.replace("/")
-                    }
+                    onPress={onBack ?? (() =>
+                      router.canGoBack() ? router.back() : router.replace("/"))}
                   >
                     <SymbolView
                       name={{
@@ -409,7 +411,9 @@ export function RequireRole({
   roles: Role[];
   children: React.ReactNode;
 }) {
-  const { session, restoring } = useApp();
+  const { session, restoring, sessionGeneration } = useApp();
+  const pathname = usePathname();
+  const params = useLocalSearchParams();
   if (restoring)
     return <ActivityIndicator style={{ flex: 1 }} color={colors.brand} />;
   if (!session || !roles.includes(session.user.role))
@@ -422,12 +426,12 @@ export function RequireRole({
           action={{
             title: session ? "Về tài khoản" : "Đăng nhập",
             onPress: () =>
-              router.replace(session ? "/(customer)/(tabs)/account" : "/login"),
+              session ? router.replace("/") : router.push(loginHref(captureReturnTo(pathname, params))),
           }}
         />
       </Screen>
     );
-  return <React.Fragment key={session.user.id}>{children}</React.Fragment>;
+  return <React.Fragment key={`${sessionGeneration}:${session.user.id}`}>{children}</React.Fragment>;
 }
 export function MoneyRows({
   data,

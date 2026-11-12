@@ -1,0 +1,25 @@
+import {ApiError} from "../../shared/api/http.ts";
+import type {Requester} from "../../shared/types/domain.ts";
+import type {Food} from "../catalog/catalogService.ts";
+export type Choice={optionValueIds:string[];quantity:number;note:string};
+export type CartLine=Choice&{id:string;foodId:string;foodName:string;valid?:boolean;invalidMessage?:string;options?:string;unitPrice:number|null;lineTotal:number;imageCode?:string};
+export type Cart={id:string;version:number;restaurantId:string|null;restaurantName:string|null;items:CartLine[];estimatedSubtotal:number;pendingMutation?:Pending|null};
+export type Pending={id:string;method:"POST"|"PUT"|"DELETE";path:string;body?:Record<string,unknown>;version:number};
+export function reconcileChoice(food:Food,choice:Choice):Choice {const allowed=new Set(food.optionGroups?.flatMap(g=>g.values.filter(v=>v.available).map(v=>v.id))??[]);return {optionValueIds:[...new Set(choice.optionValueIds)].filter(id=>allowed.has(id)),quantity:Number.isInteger(choice.quantity)&&choice.quantity>=1&&choice.quantity<=99?choice.quantity:1,note:choice.note.slice(0,200)};}
+export function validateChoice(food:Food,choice:Choice):string|null {if(!food.available||food.restaurantAvailable===false)return "Món hoặc quán hiện không phục vụ.";if(!Number.isInteger(choice.quantity)||choice.quantity<1||choice.quantity>99)return "Số lượng từ 1 đến 99.";if(choice.note.length>200)return "Ghi chú tối đa 200 ký tự.";const clean=reconcileChoice(food,choice);if(clean.optionValueIds.length!==choice.optionValueIds.length)return "Có tùy chọn không hợp lệ; hãy chọn lại.";for(const g of food.optionGroups??[]){const count=g.values.filter(v=>choice.optionValueIds.includes(v.id)).length;if(count<g.minSelect||count>g.maxSelect)return `${g.name}: cần chọn ${g.minSelect}–${g.maxSelect}.`;}return null;}
+export function estimatedPrice(food:Food,choice:Choice){return food.basePrice+(food.optionGroups??[]).flatMap(g=>g.values).filter(v=>choice.optionValueIds.includes(v.id)).reduce((n,v)=>n+v.extraPrice,0);}
+export function createCartJournal(backend:{get:()=>Promise<Pending|null>;set:(p:Pending|null)=>Promise<void>}){
+ let tail:Promise<unknown>=Promise.resolve();function serial<T>(f:()=>Promise<T>){const p=tail.then(f);tail=p.catch(()=>{});return p;}
+ return {get:()=>serial(backend.get),begin:(p:Pending)=>serial(async()=>{if(await backend.get())throw new ApiError("PENDING_CART_MUTATION","Có thao tác giỏ chưa rõ kết quả. Mở giỏ để kiểm tra.",409);await backend.set(p);}),clearIf:(id:string)=>serial(async()=>{if((await backend.get())?.id===id)await backend.set(null);})};
+}
+type Journal=ReturnType<typeof createCartJournal>;
+export const cartService=(request:Requester,journal?:Journal,current:()=>boolean=()=>true,id:()=>string=()=>String(Date.now()))=>{
+ const assertCurrent=()=>{if(!current())throw new ApiError("SESSION_CHANGED","Phiên đã thay đổi.");};
+ const get=async()=>{const value=await request<Cart>("/cart");assertCurrent();const pendingMutation=await journal?.get();assertCurrent();return {...value,pendingMutation};};
+ const send=async(p:Pending)=>{assertCurrent();try{const value=await request<Cart>(p.path,p.method,p.body);try{await journal!.clearIf(p.id);}catch{throw new ApiError("JOURNAL_CLEAR_FAILED","Máy chủ đã trả kết quả nhưng chưa dọn được tham chiếu trên thiết bị. Hãy đọc lại giỏ.");}assertCurrent();return value;}catch(e){if(e instanceof ApiError&&e.status>=400&&e.status<500){try{await journal!.clearIf(p.id);}catch{throw new ApiError(e.code,e.message+" Chưa dọn được tham chiếu trên thiết bị.",e.status);}}throw e;}};
+ const mutate=async(method:Pending["method"],path:string,version:number,body?:Record<string,unknown>)=>{assertCurrent();if(!journal)throw new ApiError("STORAGE_REQUIRED","Chưa lưu được tham chiếu giỏ trên thiết bị.");const p={id:id(),method,path,version,body};await journal.begin(p);if(!current()){await journal.clearIf(p.id);assertCurrent();}return send(p);};
+ const body=(foodId:string,choice:Choice,version:number,replaceRestaurant=false)=>({foodId,optionValueIds:choice.optionValueIds,note:choice.note.trim(),quantity:choice.quantity,expectedVersion:version,replaceRestaurant});
+ return {get,add:(foodId:string,choice:Choice,version:number,replace=false)=>mutate("POST","/cart/items",version,body(foodId,choice,version,replace)),edit:(line:CartLine,choice:Choice,version:number)=>mutate("PUT",`/cart/items/${encodeURIComponent(line.id)}`,version,body(line.foodId,choice,version)),remove:(itemId:string|null,version:number)=>mutate("DELETE",`${itemId?`/cart/items/${encodeURIComponent(itemId)}`:"/cart"}?expectedVersion=${version}`,version),
+ retryPending:async()=>{if(!journal)throw Error("Journal missing");const p=await journal.get();assertCurrent();if(!p)throw new ApiError("NO_PENDING_MUTATION","Không có thao tác chờ.",409);return send(p);},
+ acknowledge:async()=>{const cart=await get();const p=cart.pendingMutation;if(p&&cart.version<=p.version)throw new ApiError("PENDING_CART_MUTATION","Giỏ chưa xác nhận thay đổi. Chỉ gửi lại khi bạn xác nhận với cùng version.",409);if(p)await journal!.clearIf(p.id);return cart;}};
+};

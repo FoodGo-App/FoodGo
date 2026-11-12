@@ -61,3 +61,9 @@ test("HTTP preserves 409 and exposes structured error", async () => {
     { code: "ORDER_STATE_CONFLICT", status: 409 },
   );
 });
+
+test("HTTP non-JSON 401 preserves HTTP status instead of becoming a network failure", async () => {
+  await assert.rejects(() => httpRequest("https://example.test", null, "/auth/login",
+    "POST", {}, undefined, async () => new Response("unauthorized", { status: 401 })),
+    { status: 401, code: "HTTP_ERROR" });
+});

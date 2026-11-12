@@ -1,0 +1,7 @@
+import React from "react";
+import {Button,Card,Chip,Field,Heading,Label} from "../../shared/components/ui";
+import type {Food} from "../catalog/catalogService";
+import type {Choice} from "./cartService";
+import {estimatedPrice} from "./cartService";
+import {money} from "../../shared/theme/theme";
+export function ChoiceFields({food,value,onChange,disabled=false}:{food:Food;value:Choice;onChange:(value:Choice)=>void;disabled?:boolean}){return <><Label>Dự tính {money(estimatedPrice(food,value))}/phần; backend quyết định giá khi ghi.</Label>{food.optionGroups?.map(g=><Card key={g.id}><Heading>{g.name}: chọn {g.minSelect}–{g.maxSelect}</Heading>{g.values.map(v=><Chip key={v.id} title={`${v.name} +${money(v.extraPrice)}${v.available?"":" · tạm hết"}`} selected={value.optionValueIds.includes(v.id)} onPress={()=>{if(!disabled&&v.available){const ids=value.optionValueIds.includes(v.id)?value.optionValueIds.filter(id=>id!==v.id):g.maxSelect===1?[...value.optionValueIds.filter(id=>!g.values.some(x=>x.id===id)),v.id]:[...value.optionValueIds,v.id];onChange({...value,optionValueIds:ids});}}} />)}</Card>)}<Field label="Số lượng (1–99)" keyboardType="number-pad" value={String(value.quantity)} editable={!disabled} onChangeText={text=>onChange({...value,quantity:Number(text)})} /><Field label="Ghi chú (tối đa 200 ký tự)" value={value.note} maxLength={200} editable={!disabled} onChangeText={note=>onChange({...value,note})} /><Button title="Đặt lại lựa chọn" variant="ghost" disabled={disabled} onPress={()=>onChange({optionValueIds:[],quantity:1,note:""})} /></>;}

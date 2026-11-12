@@ -124,3 +124,5 @@ test("SDS uppercase allowedActions are adapted for frontend controls", () => {
     ["view", "chat", "call", "retryDispatch"],
   );
 });
+
+test("invalid cart lines stay identified and marked for downstream readers",()=>{const cart=normalizeCart({id:"c",version:2,items:[{id:"line",foodId:"food",quantity:2,valid:false,invalidReason:"ITEM_UNAVAILABLE",invalidMessage:"Not available",unitPrice:null,optionValueIds:["3"]}]});assert.equal(cart.items[0].id,"line");assert.equal(cart.items[0].valid,false);assert.equal(cart.items[0].invalidReason,"ITEM_UNAVAILABLE");assert.deepEqual(cart.items[0].optionValueIds,["3"]);});

@@ -1,4 +1,4 @@
-# FoodGo — Frontend M03, M04, M05
+# FoodGo — Frontend
 
 Ứng dụng React Native / Expo Router SDK 58. Giao diện chuyển thể từ mẫu custom G2 của A: nền kem, xanh teal, thẻ bo tròn, panda mũm mĩm. Căn cứ SRS 1.5.1 và SDS 2.1.1 đã cập nhật panda.
 
@@ -43,7 +43,7 @@ tests/                     # Quy tắc nghiệp vụ demo và hợp đồng HTTP
 docs/                      # Kế hoạch, truy vết, kiểm chứng, bàn giao
 ```
 
-`features/account` chỉ cung cấp đầu vào để thử M03–M05; chưa phải M01/M02 đầy đủ. Yêu thích và danh mục món chưa triển khai đầy đủ trong đợt này. Các thành phần starter gốc giữ lại để nhóm tham khảo, không dùng làm màn chính.
+M01/M02 đã có login/session/returnTo, địa chỉ, catalog/chi tiết/yêu thích và giỏ bằng API thật. Xem [bàn giao](../docs/M01_M02_HANDOVER.md), [demo API](docs/M01_M02_DEMO.md), [mobile](../docs/M01_M02_MOBILE.md). Phần M03–M05 demo bên dưới giữ để nhóm phối hợp; không coi kết quả mô phỏng là API thật.
 
 ## Diễn tập cùng một đơn
 
@@ -78,4 +78,4 @@ npm run export:web -- --max-workers 2
 npm run export:native -- --max-workers 2
 ```
 
-Export xác nhận bundle web/Android/iOS tạo được, không thay thế kiểm thử thiết bị thật. Chưa có backend Spring Boot chạy cùng để xác nhận tích hợp với MariaDB.
+Export xác nhận bundle tạo được, không thay thế thiết bị thật. M01–M02 đã kiểm tra 12 kịch bản Chrome/CDP qua Spring Boot/MariaDB test; người dùng đã trực tiếp nghiệm thu Android/Expo Go PASS cho catalog/yêu thích/giỏ, địa chỉ, restore/logout và tách dữ liệu A/B. Kết quả chuỗi phiên do người dùng xác nhận, không suy ra từ ảnh tĩnh. iOS và UI dòng giỏ mất khả dụng chưa kiểm tra. Xem bảng bằng chứng trong tài liệu bàn giao; không chạy lại toàn bộ chỉ vì đọc hướng dẫn.

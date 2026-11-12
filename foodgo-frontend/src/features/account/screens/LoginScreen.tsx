@@ -1,5 +1,6 @@
-import React, { useState } from "react";
-import { router } from "expo-router";
+import React, { useEffect, useRef, useState } from "react";
+import { router, useLocalSearchParams, usePreventRemove, useIsFocused, type Href } from "expo-router";
+import { afterLoginTarget, cancelLoginTarget } from "../loginReturn";
 import { useApp } from "../../../providers/AppProvider";
 import {
   Banner,
@@ -14,28 +15,49 @@ import {
 import { DEMO_USERS } from "../../../shared/api/demo";
 import { explain } from "../../../shared/theme/theme";
 export default function LoginScreen() {
-  const { mode, login, restoring } = useApp();
+  const { mode, login, cancelLogin, restoring } = useApp();
+  const { returnTo } = useLocalSearchParams<{ returnTo?: string | string[] }>();
+  const focused = useIsFocused();
+  const [leaving, setLeaving] = useState(false);
+  const attempt = useRef(0), mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    return () => { mounted.current = false; };
+  }, []);
+  const disablePrevention = usePreventRemove(focused && !leaving, () => cancel());
+  function cancel() {
+    attempt.current++;
+    cancelLogin();
+    setLeaving(true);
+    disablePrevention();
+    router.replace(cancelLoginTarget(returnTo) as Href);
+  }
   const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   const enter = async (name: string, pass: string) => {
     if (busy || restoring) return;
+    const ticket = ++attempt.current;
     setBusy(true);
     setError(null);
     try {
-      await login(name, pass);
-      router.replace("/");
+      const next = await login(name, pass);
+      if (!mounted.current || ticket !== attempt.current) return;
+      setLeaving(true);
+      disablePrevention();
+      router.replace(afterLoginTarget(next.user.role, returnTo, mode) as Href);
     } catch (e) {
-      setError(explain(e));
+      if (mounted.current && ticket === attempt.current) setError(explain(e));
     } finally {
-      setBusy(false);
+      if (mounted.current && ticket === attempt.current) setBusy(false);
     }
   };
   return (
-    <Screen title="Chào bạn, mời vào FoodGo" back>
+    <Screen title="Chào bạn, mời vào FoodGo" back onBack={cancel}>
       <Panda size={145} />
       {error && <Banner error>{error}</Banner>}
+      <Button title="Hủy đăng nhập" variant="ghost" onPress={cancel} />
       {mode === "demo" ? (
         <>
           <Banner>

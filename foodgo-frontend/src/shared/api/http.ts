@@ -33,13 +33,15 @@ export async function httpRequest<T>(
       signal: controller.signal,
     });
     if (response.status === 204) return undefined as T;
-    const result = await response.json();
+    const result = await response.json().catch(() => null);
     if (!response.ok)
       throw new ApiError(
-        result.error?.code ?? "HTTP_ERROR",
-        result.error?.message ?? "Không thể thực hiện thao tác.",
+        result?.error?.code ?? "HTTP_ERROR",
+        result?.error?.message ?? "Không thể thực hiện thao tác.",
         response.status,
       );
+    if (result === null || typeof result !== "object")
+      throw new ApiError("INVALID_RESPONSE", "Máy chủ trả dữ liệu không hợp lệ.", response.status);
     if ("data" in result) {
       if (
         Array.isArray(result.data) &&

@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { Text, View } from "react-native";
-import { router } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
+import { loginHref, PUBLIC_HOME } from "../loginReturn";
 import { useApp } from "../../../providers/AppProvider";
 import {
   Banner,
@@ -12,10 +13,13 @@ import {
   Screen,
   styles,
 } from "../../../shared/components/ui";
+import { useResource } from "../../../shared/hooks/useResource";
+import { catalogService } from "../../catalog/catalogService";
 import { colors, explain } from "../../../shared/theme/theme";
 import { FoodThumbnail } from "../../../shared/components/FoodThumbnail";
 export default function HomeScreen() {
   const { session, mode, request } = useApp();
+  const { selection } = useLocalSearchParams<{ selection?: string | string[] }>();
   const [busy, setBusy] = useState(false),
     [error, setError] = useState<string | null>(null);
   return (
@@ -48,6 +52,8 @@ export default function HomeScreen() {
         <Panda size={128} pose="hello" />
       </View>
       {error && <Banner error>{error}</Banner>}
+      <Button title="Khám phá quán và món" onPress={() => router.push("/catalog" as Href)} />
+      <Button title="Giỏ hàng của tôi" variant="secondary" onPress={() => router.push("/cart" as Href)} />
       <Card>
         <Heading>Đơn của bạn, luôn trong tầm tay</Heading>
         <Label muted>
@@ -61,7 +67,7 @@ export default function HomeScreen() {
                 ? "/checkout/review"
                 : session
                   ? "/"
-                  : "/login",
+                  : loginHref(PUBLIC_HOME),
             )
           }
         />
@@ -78,6 +84,9 @@ export default function HomeScreen() {
             Giỏ mẫu giúp bạn thử hành trình đặt và giao món. Chưa phát sinh giao
             dịch thật.
           </Banner>
+          {selection === "demo-meal" && (
+            <Banner>Bạn đang xem lại bữa mẫu đã chọn. Kiểm tra lựa chọn và bấm Chuẩn bị giỏ mẫu để xác nhận; đăng nhập chưa thêm món vào giỏ.</Banner>
+          )}
           <Card>
             <View style={styles.between}>
               <Heading>Bếp Nhà</Heading>
@@ -99,7 +108,7 @@ export default function HomeScreen() {
               busy={busy}
               onPress={() => {
                 if (session?.user.role !== "CUSTOMER") {
-                  router.push("/login");
+                  router.push(loginHref(`${PUBLIC_HOME}?selection=demo-meal`));
                   return;
                 }
                 setBusy(true);
@@ -117,12 +126,9 @@ export default function HomeScreen() {
           />
         </>
       )}
-      {mode === "api" && (
-        <Banner>
-          Nhận giỏ và địa chỉ từ module M01/M02 qua API. Chưa có dữ liệu thì màn
-          kiểm tra đơn hiển thị hướng dẫn thay vì tự tạo món giả.
-        </Banner>
-      )}
+      {mode === "api" && <CatalogHome />}
     </Screen>
   );
 }
+
+function CatalogHome(){const {request}=useApp(),service=catalogService(request),data=useResource(()=>service.home(),true,false,"catalog-home");return <>{data.error&&<Banner error>{data.error}</Banner>}{data.loading&&<Label>Đang tải gợi ý...</Label>}{data.data?.banners.map(b=><Heading key={b.id}>{b.title}</Heading>)}{data.data?.categories.map(c=><Button key={c.id} title={c.name} variant="secondary" onPress={()=>router.push(`/catalog?categoryId=${c.id}` as Href)} />)}{data.data?.suggestedFoods.map(f=><Card key={f.id}><Heading>{f.name}</Heading><Button title="Xem món" onPress={()=>router.push(`/food/${f.id}` as Href)} /></Card>)}{data.data?.offers.map(o=><Banner key={o.id}>{o.code} · {o.name}. Điều kiện áp dụng được kiểm tra lại khi báo giá.</Banner>)}<Button title="Tải lại gợi ý" variant="ghost" onPress={()=>{void service.home(true).then(()=>data.reload()).catch(()=>{});}} /></>;}

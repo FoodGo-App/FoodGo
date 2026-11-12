@@ -57,6 +57,10 @@ function normalizeLine(
   return {
     id: str(w.id, `line-${index}`),
     foodId: str(w.foodId),
+    valid: typeof w.valid === "boolean" ? w.valid : undefined,
+    invalidReason: str(w.invalidReason) || undefined,
+    invalidMessage: str(w.invalidMessage) || undefined,
+    optionValueIds: Array.isArray(w.optionValueIds) ? w.optionValueIds.map((id) => str(id)) : undefined,
     foodName: str(w.foodName ?? w.name ?? food.name, "Món trong đơn"),
     imageCode: str(w.imageCode ?? food.imageCode) || undefined,
     quantity: num(w.quantity),

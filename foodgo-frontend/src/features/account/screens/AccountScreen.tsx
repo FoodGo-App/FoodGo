@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useApp } from "../../../providers/AppProvider";
 import {
   Banner,
@@ -11,6 +11,7 @@ import {
   Panda,
   Screen,
 } from "../../../shared/components/ui";
+import { loginHref } from "../loginReturn";
 import { explain } from "../../../shared/theme/theme";
 export default function AccountScreen() {
   const { session, mode, logout, request } = useApp();
@@ -59,13 +60,12 @@ export default function AccountScreen() {
               variant="ghost"
               busy={busy}
               onPress={() => {
-                setBusy(true);
-                logout()
-                  .then(() => router.replace("/"))
-                  .finally(() => setBusy(false));
+                void logout();
+                router.replace("/");
               }}
             />
           </Card>
+          {session.user.role === "CUSTOMER" && <Button title="Địa chỉ giao hàng" onPress={() => router.push("/addresses" as Href)} />}
           {mode === "demo" && (
             <>
               <Banner>
@@ -75,7 +75,7 @@ export default function AccountScreen() {
               <Button
                 title="Đổi tài khoản demo"
                 variant="secondary"
-                onPress={() => router.push("/login")}
+                onPress={() => router.push(loginHref("/account"))}
               />
               <Card>
                 <Heading>Kịch bản mô phỏng</Heading>
@@ -120,7 +120,7 @@ export default function AccountScreen() {
           )}
         </>
       ) : (
-        <Button title="Đăng nhập" onPress={() => router.push("/login")} />
+        <Button title="Đăng nhập" onPress={() => router.push(loginHref("/account"))} />
       )}
       {message && <Banner>{message}</Banner>}
       <Label muted>

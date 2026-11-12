@@ -1,0 +1,21 @@
+# M01–M02: hợp đồng và điểm nối triển khai
+
+- API-04–07: ownership lấy từ principal; khóa user cho giới hạn 10. POST trả 201; input sai 400 VALIDATION_ERROR; vượt giới hạn 409 ADDRESS_LIMIT; đọc/sửa/xóa ID không thuộc chủ 404. Xóa lặp ID đã mất trả 404 và không có tác động mới (không bổ sung tombstone/schema). Không cập nhật orders/order_items: snapshot địa chỉ trên đơn giữ độc lập.
+- API-08–14: home/categories/restaurant detail/food detail/offers; q, categoryId, restaurantId, areaCode mẫu; sort rating/distance/price; page>=0, size1–50; SQL lấy size+1 theo OFFSET. Metadata đánh giá/khoảng cách/ETA/review là mẫu. Không chứa isFavorite trong DTO công khai.
+- API-15–17: FavoriteDto type,targetId,summary,savedAt; chỉ user hiện tại. PUT/DELETE idempotent; khóa user khi ghi. Favorites có q/sort/page; bộ lọc yêu thích trên FE bỏ categoryId vì API-15 không định nghĩa tham số đó, ghi rõ thay vì lọc sai trên một trang dữ liệu.
+- API-18–22: giữ CartService.lock/version/clear và PricingService.line/lines/quote. PUT dòng không nhận foodId cũng được; nếu gửi thì phải khớp món của dòng. Giá luôn từ DB. User lock tạo/khóa cart và expectedVersion ngăn hai ghi cùng version. Đổi quán chỉ khi replaceRestaurant=true, toàn transaction.
+- GET cart dùng displayLines: valid/invalidReason/invalidMessage và estimated*; dòng lỗi vẫn có id, foodId, optionValueIds để sửa/xóa. estimatedSubtotal chỉ tính dòng hợp lệ. PricingService.lines/quote vẫn strict; M03 không được dùng subtotal này như giá chốt và cần đưa người dùng về /cart nếu dòng không hợp lệ.
+- FE giữ session generation. Public catalog cache TTL60s, key query xác định, cùng key in-flight dùng chung promise; không cache favorites/cart/addresses hoặc token. Pull refresh bỏ cache.
+- Trước ghi giỏ, journal riêng user lưu client mutation ID, request và expectedVersion. Mất phản hồi không tự retry. Người dùng đọc giỏ rồi xác nhận gửi lại cùng expectedVersion, hoặc nhận trạng thái đã đổi trước khi bỏ marker. Không tạo anonymous cart hay replay giỏ/yêu thích/đơn sau login.
+- Routes mới /addresses, /catalog, /food/[id], /restaurants/[id], /cart. returnTo allowlist chỉ giữ bộ lọc/tùy chọn/số lượng/ghi chú được hỗ trợ. Food options được đối chiếu lại với dữ liệu hiện tại, backend vẫn kiểm tra lần cuối. RESTAURANT/DRIVER đi qua index role switch.
+- M01FixtureLoader và M02FixtureLoader chỉ local, không prod/test/m01-test, và foodgo.seed-enabled=true rõ ràng; mặc định false. Chạy lặp tuần tự chỉ insert thiếu, không reset hoặc đổi dữ liệu đã có. Chưa tự chạy seed trên fooddriver. Người vận hành tự đặt FOODGO_SEED_PASSWORD riêng khi bật fixture.
+- Test dùng fooddriver_m01_test qua initializer trước refresh và TestDatabaseProbe trước Flyway: kiểm tra catalog đích và account không được USE fooddriver. TestServerLauncher dùng test profile, không gọi development runner, dữ liệu test UUID riêng. Không đổi V1/pom target21; chạy Maven bằng JDK22 riêng phiên.
+- M03–M05 chưa được triển khai BE trong gói này; các API checkout/attempt/order do thành viên khác hoàn thiện. M01–M02 kết thúc tại giỏ đã lưu; route kiểm tra đơn vẫn dùng màn hiện có, không giả kết quả đặt đơn.
+
+Kết quả chạy từng lượt ghi ngoài repository trong artifacts/reports. Compile/unit test không thay thế HTTP/DB và kiểm thử thiết bị. Không đưa credential hoặc token runtime vào tài liệu này.
+
+## Nghiệm thu và giới hạn tích hợp — 12/11/2026
+
+Ngày 12/11/2026, người dùng trực tiếp thao tác trên Android/Expo Go và xác nhận PASS: catalog/yêu thích/giỏ, địa chỉ, đóng/mở lại khôi phục phiên A, logout rồi đóng/mở lại vẫn Guest, login B không thấy dữ liệu riêng A. Đây là kết quả kiểm thử thủ công do người dùng cung cấp; ảnh tĩnh không tự chứng minh đầy đủ chuỗi restore hoặc tách dữ liệu A/B. Agent không nhận là đã tự điều khiển thiết bị.
+
+Backend45 tests, FE67 tests và web12 kịch bản PASS là các kết quả đã có; không chạy lại khi source không đổi. Đơn hàng/Hộp thư CUSTOMER đều gọi GET /orders: đã đối chiếu /auth/me200 và /orders500/INTERNAL_ERROR, backend thiếu controller M03; service/màn liên quan giữ nguyên baseline. Ghi phụ thuộc M03–M05 trong [bàn giao](../../docs/M01_M02_HANDOVER.md#giới-hạn-tích-hợp-đơn-hàng-và-hộp-thư), không triển khai thay hoặc giả thành công. iOS và UI dòng giỏ mất khả dụng chưa kiểm tra.

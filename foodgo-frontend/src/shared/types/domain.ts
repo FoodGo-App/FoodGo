@@ -33,6 +33,10 @@ export type Address = {
   mapPointCode: string;
 };
 export type CartItem = {
+  valid?: boolean;
+  invalidReason?: string;
+  invalidMessage?: string;
+  optionValueIds?: string[];
   id: string;
   foodId: string;
   foodName: string;

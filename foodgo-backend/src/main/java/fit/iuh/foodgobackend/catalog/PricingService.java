@@ -11,6 +11,7 @@ import java.util.*;
   require(quantity>=1&&quantity<=99,400,"INVALID_QUANTITY","Số lượng phải từ 1 đến 99.");
   require(new HashSet<>(optionIds).size()==optionIds.size(),400,"INVALID_OPTIONS","Tùy chọn không được lặp.");
   var food=db.required("SELECT * FROM foods WHERE id=? FOR UPDATE",foodId);require(bool(food.get("available")),409,"ITEM_UNAVAILABLE","Món hiện ngừng phục vụ.");
+  require(bool(db.required("SELECT available FROM restaurants WHERE id=? FOR UPDATE",food.get("restaurant_id")).get("available")),409,"ITEM_UNAVAILABLE","Quán hiện ngừng phục vụ.");
   var selected=new ArrayList<Map<String,Object>>();var seen=new HashSet<Long>();long price=n(food,"base_price");
   for(var g:db.rows("SELECT * FROM option_groups WHERE food_id=? ORDER BY sort_order,id FOR UPDATE",foodId)){
    int count=0;for(var v:db.rows("SELECT * FROM option_values WHERE group_id=? ORDER BY id FOR UPDATE",g.get("id"))){long vid=n(v,"id");if(optionIds.contains(vid)){require(bool(v.get("available")),409,"ITEM_UNAVAILABLE","Tùy chọn ngừng phục vụ.");seen.add(vid);count++;price=Math.addExact(price,n(v,"extra_price"));selected.add(m("optionValueId",id(v.get("id")),"groupName",g.get("name"),"valueName",v.get("name"),"extraPrice",n(v,"extra_price")));}}
@@ -30,4 +31,12 @@ import java.util.*;
   var addr=m("id",id(address.get("id")),"label",address.get("label"),"recipientName",address.get("recipient_name"),"recipientPhone",address.get("recipient_phone"),"areaCode",address.get("area_code"),"addressText",address.get("address_text"),"mapPointCode",address.get("map_point_code"));
   return m("customerId",Long.toString(customerId),"cartVersion",n(cart,"version"),"restaurantId",id(restaurant.get("id")),"restaurantName",restaurant.get("name"),"lines",lines,"address",addr,"offer",offer,"paymentMethod",method,"subtotal",subtotal,"deliveryFee",fee,"foodDiscount",foodDiscount,"deliveryDiscount",deliveryDiscount,"total",Math.max(0,subtotal+fee-foodDiscount-deliveryDiscount));
  }
+
+ /** Read-only representation keeps invalid lines removable; quote/lines stay strict. */
+ public List<Map<String,Object>> displayLines(long cartId){var result=new ArrayList<Map<String,Object>>();for(var item:db.rows("SELECT * FROM cart_items WHERE cart_id=? ORDER BY food_id,id",cartId)){
+  var opts=db.rows("SELECT option_value_id FROM cart_item_options WHERE cart_item_id=? ORDER BY option_value_id",item.get("id")).stream().map(o->n(o,"option_value_id")).toList();Map<String,Object> out;
+  try{out=line(n(item,"food_id"),(int)n(item,"quantity"),s(item,"note"),opts);out.put("valid",true);out.put("estimatedUnitPrice",out.get("unitPrice"));out.put("estimatedLineTotal",out.get("lineTotal"));}
+  catch(ApiException e){var f=db.one("SELECT name,image_code FROM foods WHERE id=?",item.get("food_id"));out=m("foodId",id(item.get("food_id")),"foodName",f==null?"Món không còn tồn tại":f.get("name"),"imageCode",f==null?"":f.get("image_code"),"quantity",item.get("quantity"),"note",item.get("note"),"optionValueIds",opts.stream().map(Object::toString).toList(),"valid",false,"invalidReason",e.code,"invalidMessage",e.getMessage(),"unitPrice",null,"lineTotal",0,"estimatedUnitPrice",null,"estimatedLineTotal",null,"options","");}
+  out.put("id",id(item.get("id")));result.add(out);
+ }return result;}
 }
