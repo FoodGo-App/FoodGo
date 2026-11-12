@@ -38,6 +38,26 @@ class FulfillmentServiceTests {
   when(db.required("SELECT * FROM driver_offers WHERE id=? AND driver_id=? FOR UPDATE",10L,7L)).thenReturn(offer);
   assertEquals("DRIVER_BUSY",assertThrows(ApiException.class,()->service.offerAction(driver,10,"accept")).code);
  }
+ @Test void acceptancePersistsOneMillisecondDecisionTimeOnOrderAndOffer(){
+  var expiry=Timestamp.from(Instant.now().plusSeconds(30));
+  var offer=m("id",10L,"order_id",5L,"driver_id",7L,"round_no",1L,"status","OFFERED","expires_at",expiry);
+  when(db.required("SELECT * FROM driver_offers WHERE id=? AND driver_id=?",10L,7L)).thenReturn(offer);
+  when(db.required("SELECT * FROM users WHERE id=? FOR UPDATE",7L)).thenReturn(m("active_order_id",null,"enabled",true));
+  when(db.required("SELECT * FROM driver_offers WHERE id=? AND driver_id=? FOR UPDATE",10L,7L)).thenReturn(offer);
+  service.offerAction(driver,10,"accept");
+  var times=new ArrayList<Timestamp>();
+  for(var invocation:mockingDetails(db).getInvocations()){
+   if(!invocation.getMethod().getName().equals("update"))continue;
+   String sql=(String)invocation.getRawArguments()[0];
+   if(!(sql.startsWith("UPDATE orders SET driver_id=")||sql.contains("SET status='ACCEPTED'")))continue;
+   Object[] values=(Object[])invocation.getRawArguments()[1];
+   var timestamp=Arrays.stream(values).filter(Timestamp.class::isInstance).map(Timestamp.class::cast).findFirst();
+   assertTrue(timestamp.isPresent(),"Assignment and accepted offer must persist the shared decision timestamp, not independent SQL clocks");
+   times.add(timestamp.orElseThrow());
+  }
+  assertEquals(2,times.size());assertEquals(times.get(0),times.get(1));
+  assertTrue(times.getFirst().before(expiry));assertEquals(0,times.getFirst().getNanos()%1_000_000);
+ }
  @Test void driverOffersContainNoCustomerFields(){
   when(db.rows(anyString(),eq(7L))).thenReturn(List.of(m("id",10L,"order_id",5L,"restaurant_name","Quán","area_code","A","payment_method","COD","total",50000L,"expires_at",Timestamp.from(Instant.now().plusSeconds(30)),"recipient_name","Secret","recipient_phone","0123456789","address_text","private")));
   var result=service.offers(driver);assertEquals(Set.of("id","orderId","restaurantName","areaCode","codAmount","expiresAt"),result.getFirst().keySet());assertEquals(50000L,result.getFirst().get("codAmount"));

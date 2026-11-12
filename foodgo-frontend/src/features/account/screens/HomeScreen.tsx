@@ -1,140 +1,45 @@
-import React, { useState } from "react";
-import { Text, View } from "react-native";
-import { router, useLocalSearchParams, type Href } from "expo-router";
-import { loginHref, PUBLIC_HOME } from "../loginReturn";
-import { useApp } from "../../../providers/AppProvider";
-import {
-  Banner,
-  Button,
-  Card,
-  Heading,
-  Label,
-  Panda,
-  Screen,
-  styles,
-} from "../../../shared/components/ui";
-import { useResource } from "../../../shared/hooks/useResource";
-import { catalogService } from "../../catalog/catalogService";
-import { colors, explain } from "../../../shared/theme/theme";
-import { FoodThumbnail } from "../../../shared/components/FoodThumbnail";
-export default function HomeScreen() {
-  const { session, mode, request } = useApp();
-  const { selection } = useLocalSearchParams<{ selection?: string | string[] }>();
-  const [busy, setBusy] = useState(false),
-    [error, setError] = useState<string | null>(null);
-  return (
-    <Screen title="Hôm nay, bạn muốn ăn gì?" subtitle="Bữa ngon, ngay gần bạn.">
-      <View
-        style={{
-          backgroundColor: colors.mint,
-          borderRadius: 24,
-          padding: 18,
-          flexDirection: "row",
-          alignItems: "center",
-          overflow: "hidden",
-        }}
-      >
-        <View style={{ flex: 1, gap: 12 }}>
-          <Text
-            style={{
-              fontSize: 24,
-              lineHeight: 33,
-              color: colors.ink,
-              fontWeight: "800",
-            }}
-          >
-            Bữa ngon,{"\n"}thêm niềm vui.
-          </Text>
-          <Text style={{ fontSize: 13, lineHeight: 21, color: colors.brand }}>
-            Panda mang sự chu đáo đến từng chuyến giao.
-          </Text>
-        </View>
-        <Panda size={128} pose="hello" />
-      </View>
-      {error && <Banner error>{error}</Banner>}
-      <Button title="Khám phá quán và món" onPress={() => router.push("/catalog" as Href)} />
-      <Button title="Giỏ hàng của tôi" variant="secondary" onPress={() => router.push("/cart" as Href)} />
-      <Card>
-        <Heading>Đơn của bạn, luôn trong tầm tay</Heading>
-        <Label muted>
-          Kiểm tra món, xác nhận đơn và theo dõi hành trình giao nhận.
-        </Label>
-        <Button
-          title={session ? "Kiểm tra đơn hàng" : "Đăng nhập để đặt món"}
-          onPress={() =>
-            router.push(
-              session?.user.role === "CUSTOMER"
-                ? "/checkout/review"
-                : session
-                  ? "/"
-                  : loginHref(PUBLIC_HOME),
-            )
-          }
-        />
-        <Button
-          title="Xem đơn đã đặt"
-          variant="secondary"
-          onPress={() => router.push("/(customer)/(tabs)/orders")}
-        />
-      </Card>
-      {mode === "demo" && (
-        <>
-          <Heading>Thử một bữa ngon từ Bếp Nhà</Heading>
-          <Banner>
-            Giỏ mẫu giúp bạn thử hành trình đặt và giao món. Chưa phát sinh giao
-            dịch thật.
-          </Banner>
-          {selection === "demo-meal" && (
-            <Banner>Bạn đang xem lại bữa mẫu đã chọn. Kiểm tra lựa chọn và bấm Chuẩn bị giỏ mẫu để xác nhận; đăng nhập chưa thêm món vào giỏ.</Banner>
-          )}
-          <Card>
-            <View style={styles.between}>
-              <Heading>Bếp Nhà</Heading>
-              <Text style={{ color: colors.orange, fontWeight: "700" }}>
-                TRUA10
-              </Text>
-            </View>
-            <View style={styles.row}>
-              <FoodThumbnail imageCode="CHICKEN_RICE" size={80} />
-              <View style={{ flex: 1, gap: 4 }}>
-                <Label>2 phần cơm gà nướng</Label>
-                <Label muted>Thêm 1 phần cơm nấm kho</Label>
-              </View>
-            </View>
-            <Label muted>Tiền món 140.000đ · Phí giao mẫu 15.000đ</Label>
-            <Button
-              title="Chuẩn bị giỏ mẫu"
-              variant="secondary"
-              busy={busy}
-              onPress={() => {
-                if (session?.user.role !== "CUSTOMER") {
-                  router.push(loginHref(`${PUBLIC_HOME}?selection=demo-meal`));
-                  return;
-                }
-                setBusy(true);
-                request("/demo/cart", "POST", {})
-                  .then(() => router.push("/checkout/review"))
-                  .catch((e) => setError(explain(e)))
-                  .finally(() => setBusy(false));
-              }}
-            />
-          </Card>
-          <Button
-            title="Tài khoản dùng thử"
-            variant="ghost"
-            onPress={() => router.push("/account")}
-          />
-        </>
-      )}
-      {mode === "api" && <CatalogHome />}
-      {mode === "api" && (
-        <Banner>
-          Bạn có thể kiểm tra giỏ đã chọn và theo dõi đơn hàng tại đây.
-          Giỏ đang trống? Khám phá quán và món để chọn bữa ngon nhé.
-        </Banner>
-      )}
-    </Screen>
-  );
+import React,{useState} from 'react';
+import {ScrollView,Text,View} from 'react-native';
+import {router,useLocalSearchParams,type Href} from 'expo-router';
+import {useApp} from '../../../providers/AppProvider';
+import {useResource} from '../../../shared/hooks/useResource';
+import {Banner,Button,Panda} from '../../../shared/components/ui';
+import {Brand} from '../../../shared/components/Brand';
+import {Icon} from '../../../shared/components/Gui';
+import {MotionPressable} from '../../../shared/components/Motion';
+import {FoodThumbnail} from '../../../shared/components/FoodThumbnail';
+import {colors,explain} from '../../../shared/theme/theme';
+import {catalogService} from '../../catalog/catalogService';
+import {FoodCard,RestaurantCard} from '../../catalog/components/FoodCards';
+import {DemoDiscoveryHome} from '../../catalog/components/DemoCatalogPreview';
+import {M01Screen,SearchBar,TinyAction,CartShortcut,m} from '../../catalog/components/M01Layout';
+import {loginHref,PUBLIC_HOME} from '../loginReturn';
+export default function HomeScreen(){
+ const {mode,session,request}=useApp(),{selection}=useLocalSearchParams<{selection?:string}>();
+ const [search,setSearch]=useState(''),[busy,setBusy]=useState(false),[error,setError]=useState<string|null>(null);
+ const discover=()=>router.push((search.trim()?`/catalog?q=${encodeURIComponent(search.trim())}`:'/catalog') as Href);
+ return <M01Screen title="Trang chủ" header={<View style={{...m.between,paddingHorizontal:16,paddingVertical:8}}><Brand compact/><CartShortcut onPress={()=>router.push('/cart' as Href)}/></View>}>
+  <View style={{...m.row,gap:5}}><Icon name="pin" size={15}/><Text style={m.meta}>Giao đến: Khu vực mẫu A</Text></View>
+  <SearchBar value={search} onChangeText={setSearch} onSubmitEditing={discover}/>
+  <View style={{...m.row,backgroundColor:colors.mint,borderRadius:20,padding:16,overflow:'hidden'}}><View style={{flex:1,gap:7}}><Text style={{fontSize:21,lineHeight:27,fontWeight:'700',color:colors.ink}}>Bữa ngon,{"\n"}giá thêm vui!</Text><TinyAction title="Khám phá món ngon" onPress={discover}/></View><Panda size={95} pose="hello"/></View>
+  {mode==='api'?<CatalogHome/>:<DemoDiscoveryHome/>}
+  {error&&<Banner error>{error}</Banner>}
+  {mode==='demo'&&<View style={m.card}><Text style={m.heading}>Thử đặt một bữa từ Bếp Nhà</Text><Text style={m.meta}>{selection==='demo-meal'?'Kiểm tra lại bữa đã chọn rồi xác nhận giỏ mẫu nhé.':'Giỏ mẫu giúp bạn thử đặt món và theo dõi giao hàng.'}</Text><Button title="Chuẩn bị giỏ mẫu" busy={busy} onPress={()=>{if(session?.user.role!=='CUSTOMER'){router.push(loginHref(`${PUBLIC_HOME}?selection=demo-meal`));return;}setBusy(true);void request('/demo/cart','POST',{}).then(()=>router.push('/checkout/review')).catch(e=>setError(explain(e))).finally(()=>setBusy(false));}}/></View>}
+ </M01Screen>;
 }
-
-function CatalogHome(){const {request}=useApp(),service=catalogService(request),data=useResource(()=>service.home(),true,false,"catalog-home");return <>{data.error&&<Banner error>{data.error}</Banner>}{data.loading&&<Label>Đang tải gợi ý...</Label>}{data.data?.banners.map(b=><Heading key={b.id}>{b.title}</Heading>)}{data.data?.categories.map(c=><Button key={c.id} title={c.name} variant="secondary" onPress={()=>router.push(`/catalog?categoryId=${c.id}` as Href)} />)}{data.data?.suggestedFoods.map(f=><Card key={f.id}><Heading>{f.name}</Heading><Button title="Xem món" onPress={()=>router.push(`/food/${f.id}` as Href)} /></Card>)}{data.data?.offers.map(o=><Banner key={o.id}>{o.code} · {o.name}. Điều kiện áp dụng được kiểm tra lại khi báo giá.</Banner>)}<Button title="Tải lại gợi ý" variant="ghost" onPress={()=>{void service.home(true).then(()=>data.reload()).catch(()=>{});}} /></>;}
+function CatalogHome(){
+ const {request}=useApp(),service=catalogService(request);
+ const data=useResource(()=>service.home(),true,false,'catalog-home');
+ const restaurants=useResource(()=>service.restaurants({areaCode:'AREA_A',page:0,size:6}),true,false,'catalog-restaurant-preview');
+ return <View style={{gap:18}}>
+  {data.error&&<><Banner error>{data.error}</Banner><TinyAction title="Tải lại gợi ý" onPress={()=>{void service.home(true).then(()=>data.reload()).catch(()=>{});}}/></>}
+  <Text style={m.heading}>Bạn muốn ăn gì?</Text><ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:17}}>{data.data?.categories.map(c=><MotionPressable key={c.id} accessibilityRole="button" accessibilityLabel={`Danh mục ${c.name}`} onPress={()=>router.push(`/catalog?categoryId=${c.id}` as Href)} style={{width:64,alignItems:'center',gap:7}}><FoodThumbnail name={c.name} imageCode={/cơm/i.test(c.name)?'CHICKEN_RICE':/uống|sữa/i.test(c.name)?'MILK_TEA':/bánh/i.test(c.name)?'BANH_MI':/bún|phở|mì|hủ tiếu/i.test(c.name)?'PHO_BO':/chay/i.test(c.name)?'MUSHROOM_RICE':undefined} size={60} radius={30}/><Text numberOfLines={2} style={{...m.meta,textAlign:'center',color:colors.ink}}>{c.name}</Text></MotionPressable>)}</ScrollView>
+  <View style={m.between}><Text style={m.heading}>Món nổi bật</Text><TinyAction title="Xem tất cả" onPress={()=>router.push('/catalog')}/></View>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12}}>{data.data?.suggestedFoods.slice(0,6).map(food=><FoodCard key={food.id} food={food} restaurantName={restaurants.data?.content.find(r=>r.id===food.restaurantId)?.name} horizontal onPress={()=>router.push(`/food/${food.id}` as Href)}/>)}</ScrollView>
+  {!data.loading&&!data.error&&!data.data?.suggestedFoods.length&&<Text style={m.meta}>Chưa có món gợi ý. Thử khám phá các quán nhé.</Text>}
+  <View style={m.between}><Text style={m.heading}>Quán gợi ý</Text><TinyAction title="Khám phá" onPress={()=>router.push('/catalog?type=RESTAURANT' as Href)}/></View>
+  {restaurants.error&&<Banner error>{restaurants.error}</Banner>}
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:12}}>{restaurants.data?.content.map(r=><RestaurantCard key={r.id} restaurant={r} horizontal onPress={()=>router.push(`/restaurants/${r.id}` as Href)}/>)}</ScrollView>
+  {!!data.data?.offers.length&&<View style={m.card}><View style={m.row}><Icon name="ticket"/><Text style={m.heading}>Ưu đãi hôm nay</Text></View><Text style={m.text}>{data.data.offers[0].code} · {data.data.offers[0].name}</Text><Text style={m.meta}>Chọn mã và kiểm tra điều kiện ở bước đặt món.</Text></View>}
+ </View>;
+}

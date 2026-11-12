@@ -1,28 +1,18 @@
 import React, { useState } from "react";
-import { Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
 import { useLocalSearchParams } from "expo-router";
 import { useApp } from "../../../providers/AppProvider";
-import {
-  Banner,
-  Button,
-  Card,
-  Chip,
-  Field,
-  Heading,
-  Label,
-  LoadState,
-  Panda,
-  RequireRole,
-  Screen,
-  styles,
-} from "../../../shared/components/ui";
+import { Banner, Button, Field, Heading, Label, LoadState, RequireRole } from "../../../shared/components/ui";
+import { DriverAvatar, GuiScreen, Icon, guiStyles } from "../../../shared/components/Gui";
+import { MotionPressable } from "../../../shared/components/Motion";
+import { ratingDescription } from "../lib/presentation";
 import { useResource } from "../../../shared/hooks/useResource";
 import { useDraft } from "../../../shared/hooks/useDraft";
 import { communicationService } from "../services/communicationService";
 import { orderService } from "../../orders/services/orderService";
 import { colors, explain } from "../../../shared/theme/theme";
 import type { Review, ReviewInput } from "../../../shared/types/domain";
-import { SuccessMotion } from "../../../shared/components/Motion";
+
 export default function ReviewScreen() {
   return (
     <RequireRole roles={["CUSTOMER"]}>
@@ -81,107 +71,51 @@ function ReviewForm() {
       setBusy(false);
     }
   };
+  const frozen = readOnly || !draft.ready || busy || !!draft.value.pending;
   return (
-    <Screen
-      title={data?.review ? "Đánh giá đã gửi" : "Một lời cảm ơn"}
-      subtitle={`Dành cho tài xế · Đơn #${orderId}`}
-      back
-      footer={
-        data && !readOnly ? (
-          <Button
-            title={draft.value.pending?"Kiểm tra đánh giá vừa gửi":"Gửi đánh giá"}
-            busy={busy}
-            disabled={!draft.ready || value.note.length > 300}
-            onPress={() => {
-              void submit();
-            }}
-          />
-        ) : undefined
-      }
-    >
-      <LoadState
-        loading={query.loading}
-        error={query.error}
-        retry={() => {
-          void query.reload();
-        }}
-      />
+    <GuiScreen title={data?.review ? "Đánh giá đã gửi" : "Đánh giá tài xế"}
+      footer={data && !readOnly ? <Button title={draft.value.pending ? "Kiểm tra đánh giá vừa gửi" : "Gửi đánh giá"} busy={busy} disabled={!draft.ready || value.note.length > 300} onPress={() => { void submit(); }} /> : undefined}>
+      <LoadState loading={query.loading} error={query.error} retry={() => { void query.reload(); }} />
       {error && <Banner error>{error}</Banner>}
-      {data && (
-        <>
-          <View style={{ alignItems: "center" }}>
-            {data.review?<SuccessMotion><Panda size={150} pose="success" /></SuccessMotion>:<Panda size={150} pose="hello" />}
-            <Heading>{data.order.driverName ?? "Tài xế giao món"}</Heading>
+      {data && <>
+        <View style={reviewStyles.identity}>
+          <DriverAvatar name={data.order.driverName ?? "Tài xế giao món"} uri={data.order.driverAvatarUrl} size={148} />
+          <Text style={reviewStyles.name}>{data.order.driverName ?? "Tài xế giao món"}</Text>
+          <Label muted>Đơn #{orderId}{data.order.status === "DELIVERED" ? " · Đã giao thành công" : ""}</Label>
+        </View>
+        {data.order.status !== "DELIVERED" && <Banner>Chỉ đánh giá sau khi đơn đã giao thành công.</Banner>}
+        {data.review && <Banner>Đánh giá đã được lưu. Cảm ơn bạn đã chia sẻ!</Banner>}
+        {!data.review && draft.value.pending && <Banner>Đánh giá đang chờ xác nhận. Kiểm tra lại với nội dung vừa gửi.</Banner>}
+        <View style={{alignItems:"center",gap:12}}>
+          <Heading>Bạn thấy chuyến giao thế nào?</Heading>
+          <View style={reviewStyles.stars}>
+            {[1,2,3,4,5].map(stars => <MotionPressable key={stars} accessibilityRole="button" accessibilityLabel={`${stars} sao`} accessibilityState={{disabled:frozen,selected:stars===value.stars}} disabled={frozen} onPress={() => { void draft.update({...value,stars,pending:null}).catch(() => {}); }} style={reviewStyles.star}>
+              <Icon name="star" size={34} color={stars <= value.stars ? "#F59A16" : colors.line} />
+            </MotionPressable>)}
           </View>
-          {data.order.status !== "DELIVERED" && (
-            <Banner>Chỉ đánh giá sau khi đơn đã giao thành công.</Banner>
-          )}
-          {data.review && (
-            <Banner>
-              Đánh giá đã được lưu. Mỗi đơn có một đánh giá tài xế.
-            </Banner>
-          )}
-          {!data.review&&draft.value.pending&&<Banner>Đánh giá đang chờ xác nhận. Kiểm tra lại để tiếp tục với nội dung vừa gửi nhé.</Banner>}
-          <View
-            style={{ flexDirection: "row", justifyContent: "center", gap: 4 }}
-          >
-            {[1, 2, 3, 4, 5].map((stars) => (
-              <Button
-                key={stars}
-                title={stars <= value.stars ? "★" : "☆"}
-                accessibilityLabel={`${stars} sao`}
-                variant="ghost"
-                disabled={readOnly || !draft.ready || busy || !!draft.value.pending}
-                onPress={() => {void draft.update({ ...value, stars,pending:null }).catch(()=>{});}}
-              />
-            ))}
-          </View>
-          <Card>
-            <Heading>Bạn hài lòng về điều gì?</Heading>
-            <View style={{ gap: 10 }}>
-              {[
-                ["SERVICE", "Phục vụ tận tâm"],
-                ["FRIENDLY", "Thân thiện"],
-                ["DELIVERY", "Giao nhận chu đáo"],
-              ].map(([tag, label]) => (
-                <Chip
-                  key={tag}
-                  title={label}
-                  selected={value.tags.includes(tag)}
-                  disabled={readOnly || !draft.ready || busy || !!draft.value.pending}
-                  onPress={() => {
-                    if (!readOnly && draft.ready)
-                      void draft.update({
-                        ...value,
-                        tags: value.tags.includes(tag)
-                          ? value.tags.filter((t) => t !== tag)
-                          : [...value.tags, tag],
-                      }).catch(()=>{});
-                  }}
-                />
-              ))}
-            </View>
-            <Field
-              label="Nhận xét (không bắt buộc)"
-              multiline
-              editable={!readOnly && draft.ready && !busy && !draft.value.pending}
-              value={value.note}
-              maxLength={300}
-              onChangeText={(note) => {void draft.update({ ...value, note,pending:null }).catch(()=>{});}}
-            />
-            <Text style={[styles.muted, { color: colors.muted }]}>
-              {value.note.length}/300 ·{" "}
-              {data.review
-                ? "Đã gửi đánh giá"
-                : draft.saved
-                  ? "Đã lưu nháp"
-                  : "Nhận xét của bạn sẽ gắn với đơn này."}
-            </Text>
-            {draft.error && <Label>{draft.error}</Label>}
-            {draft.error&&!draft.ready&&<Button title="Thử đọc lại đánh giá nháp" onPress={()=>{void draft.reload();}} />}
-          </Card>
-        </>
-      )}
-    </Screen>
+          <Text style={guiStyles.muted}>{ratingDescription(value.stars)}</Text>
+        </View>
+        <View style={reviewStyles.tags}>
+          {[["SERVICE","Phục vụ tận tâm"],["FRIENDLY","Thân thiện"],["DELIVERY","Giao nhận chu đáo"]].map(([tag,label]) => {
+            const selected = value.tags.includes(tag);
+            return <MotionPressable key={tag} accessibilityRole="checkbox" accessibilityLabel={label} accessibilityState={{checked:selected,disabled:frozen}} disabled={frozen}
+              style={[reviewStyles.tag,{backgroundColor:selected ? colors.mint : "#F0F0EE"}]} onPress={() => { if (!frozen) void draft.update({...value,tags:selected ? value.tags.filter(t => t !== tag) : [...value.tags,tag]}).catch(() => {}); }}>
+              {selected && <Icon name="check" size={20} />}<Text style={{fontSize:14,lineHeight:20,color:selected ? colors.brand : colors.muted,fontWeight:selected ? "700" : "400"}}>{label}</Text>
+            </MotionPressable>;
+          })}
+        </View>
+        <Field label="Nhắn thêm đôi lời" placeholder="Chia sẻ cảm nhận của bạn…" multiline editable={!frozen} value={value.note} maxLength={300}
+          onChangeText={(note) => { void draft.update({...value,note,pending:null}).catch(() => {}); }} />
+        <Text style={guiStyles.muted}>{value.note.length}/300 · {data.review ? "Đã gửi đánh giá" : draft.saved ? "Đã lưu nháp" : "Nhận xét không bắt buộc"}</Text>
+        {draft.error && <Banner error>{draft.error}</Banner>}
+        {draft.error && !draft.ready && <Button title="Thử đọc lại đánh giá nháp" onPress={() => { void draft.reload(); }} />}
+        <View style={{alignItems:"center",flexDirection:"row",justifyContent:"center",gap:8}}><Icon name="heart" size={20} /><Label muted>Cảm ơn bạn đã chia sẻ!</Label></View>
+      </>}
+    </GuiScreen>
   );
 }
+const reviewStyles = StyleSheet.create({
+  identity:{alignItems:"center",gap:12,paddingTop:4},name:{fontSize:25,lineHeight:32,fontWeight:"800",color:colors.ink,textAlign:"center"},
+  stars:{flexDirection:"row",flexWrap:"wrap",justifyContent:"center",gap:2},star:{minHeight:44,minWidth:44,alignItems:"center",justifyContent:"center"},
+  tags:{flexDirection:"row",justifyContent:"center",flexWrap:"wrap",gap:10,paddingVertical:6},tag:{flexDirection:"row",alignItems:"center",justifyContent:"center",gap:6,borderRadius:25,paddingHorizontal:16,paddingVertical:12,minHeight:44},
+});

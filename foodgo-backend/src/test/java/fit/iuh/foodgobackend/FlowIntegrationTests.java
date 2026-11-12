@@ -59,6 +59,9 @@ class FlowIntegrationTests {
   assertEquals(200,request(restaurant,"POST","/restaurant/orders/"+id+"/accept",m(),null).status());
   var offers=request(driver,"GET","/driver/offers",null,null);var rows=(List<Map<String,Object>>)offers.body().get("data");assertFalse(rows.isEmpty());var incoming=rows.stream().filter(x->s(x,"orderId").equals(id)).findFirst().orElseThrow();assertFalse(incoming.containsKey("recipientPhone"));
   assertEquals(200,request(driver,"POST","/driver/offers/"+incoming.get("id")+"/accept",m(),null).status());
+  var acceptedTime=db.queryForMap("SELECT o.assigned_at,f.responded_at,f.expires_at FROM orders o JOIN driver_offers f ON f.order_id=o.id AND f.status='ACCEPTED' WHERE o.id=?",id);
+  assertEquals(acceptedTime.get("assigned_at"),acceptedTime.get("responded_at"),"Order assignment and offer acceptance share one durable decision time");
+  assertTrue(((java.sql.Timestamp)acceptedTime.get("assigned_at")).before((java.sql.Timestamp)acceptedTime.get("expires_at")));
   assertEquals(409,request(customer,"POST","/orders/"+id+"/cancel",m("reason","Hủy trễ"),null).status());
   String msgKey=UUID.randomUUID().toString();var msg=m("clientMessageId",msgKey,"kind","TEXT","text","Giao giúp mình nhé");var sent=request(customer,"POST","/orders/"+id+"/messages",msg,null);assertEquals(200,sent.status(),sent.body().toString());
   assertEquals(sent.data().get("id"),request(customer,"POST","/orders/"+id+"/messages",msg,null).data().get("id"));

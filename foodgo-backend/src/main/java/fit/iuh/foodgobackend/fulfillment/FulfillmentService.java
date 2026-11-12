@@ -91,7 +91,9 @@ public class FulfillmentService {
   var offer=db.required("SELECT * FROM driver_offers WHERE id=? AND driver_id=? FOR UPDATE",offerId,u.id());
   if(action.equals("accept")&&s(offer,"status").equals("ACCEPTED")&&n(o,"driver_id")==u.id())return orders.dto(o,u);
   if(action.equals("decline")&&s(offer,"status").equals("DECLINED"))return declined(offer);
-  FulfillmentRules.offer(s(offer,"status"),n(offer,"round_no"),n(o,"dispatch_round"),instant(offer.get("expires_at")),Instant.now());
+  // Validate and persist one decision instant; separate SQL clocks can disagree.
+  var decisionTime=Instant.now().truncatedTo(java.time.temporal.ChronoUnit.MILLIS);
+  FulfillmentRules.offer(s(offer,"status"),n(offer,"round_no"),n(o,"dispatch_round"),instant(offer.get("expires_at")),decisionTime);
   OrderPolicy.state(FulfillmentRules.PREPARATION.contains(s(o,"status"))&&o.get("driver_id")==null);
   if(action.equals("decline")){
    db.update("UPDATE driver_offers SET status='DECLINED',responded_at=UTC_TIMESTAMP(3) WHERE id=?",offerId);
@@ -99,8 +101,9 @@ public class FulfillmentService {
   }
   require(user.get("active_order_id")==null&&bool(user.get("enabled")),409,"DRIVER_BUSY","Tài xế đang thực hiện đơn khác.");
   db.update("UPDATE users SET active_order_id=? WHERE id=?",orderId,u.id());
-  db.update("UPDATE orders SET driver_id=?,delivery_status='DRIVER_ASSIGNED',assigned_at=UTC_TIMESTAMP(3),version=version+1,updated_at=UTC_TIMESTAMP(3) WHERE id=?",u.id(),orderId);
-  db.update("UPDATE driver_offers SET status='ACCEPTED',responded_at=UTC_TIMESTAMP(3) WHERE id=?",offerId);
+  var acceptedAt=Timestamp.from(decisionTime);
+  db.update("UPDATE orders SET driver_id=?,delivery_status='DRIVER_ASSIGNED',assigned_at=?,version=version+1,updated_at=? WHERE id=?",u.id(),acceptedAt,acceptedAt,orderId);
+  db.update("UPDATE driver_offers SET status='ACCEPTED',responded_at=? WHERE id=?",acceptedAt,offerId);
   db.update("UPDATE driver_offers SET status='REVOKED',responded_at=UTC_TIMESTAMP(3) WHERE order_id=? AND status='OFFERED'",orderId);
   orders.event(orderId,u.id(),"DRIVER_ASSIGNED",s(o,"delivery_status"),"DRIVER_ASSIGNED",null);
   o.put("driver_id",u.id());o.put("delivery_status","DRIVER_ASSIGNED");o.put("updated_at",now());return orders.dto(o,u);

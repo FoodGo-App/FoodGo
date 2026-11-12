@@ -1,19 +1,10 @@
 import React, { useMemo, useRef, useState } from "react";
-import { Image, Text, View } from "react-native";
+import { Image, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { router, useLocalSearchParams } from "expo-router";
 import { useApp } from "../../../providers/AppProvider";
-import {
-  Banner,
-  Button,
-  Card,
-  Field,
-  Heading,
-  Label,
-  LoadState,
-  RequireRole,
-  Screen,
-  styles,
-} from "../../../shared/components/ui";
+import { Banner, Button, Card, Heading, Label, LoadState, RequireRole } from "../../../shared/components/ui";
+import { GuiScreen, IconButton, guiStyles } from "../../../shared/components/Gui";
+import { conversationPeer } from "../lib/presentation";
 import { useResource } from "../../../shared/hooks/useResource";
 import { useDraft } from "../../../shared/hooks/useDraft";
 import { communicationService } from "../services/communicationService";
@@ -108,162 +99,52 @@ function Chat() {
       setBusy(false);
     }
   };
-  const peer = query.data?.conversation.participants.find(
-    (p) => p.id !== session!.user.id,
-  );
+  const peer = conversationPeer(query.data?.conversation.participants ?? [], session!.user.id);
   return (
-    <Screen
-      title={peer?.displayName ?? "Trò chuyện"}
-      subtitle={`Đơn #${orderId}`}
-      back
-      footer={
-        query.data && (
-          <>
-            {readOnly ? (
-              <>
-                <Banner>Đơn đã kết thúc. Bạn vẫn có thể đọc lại cuộc trò chuyện.</Banner>
-                {draft.value.pending && <Button title="Kiểm tra tin vừa gửi" busy={busy} onPress={()=>{void send();}} />}
-              </>
-            ) : (
-              <>
-                <Field
-                  label="Tin nhắn"
-                  multiline
-                  maxLength={1000}
-                  editable={draft.ready && !busy && !draft.value.pending}
-                  value={draft.value.text}
-                  onChangeText={(text) => { void draft.update({ text, pending: null }).catch(()=>{}); }}
-                  placeholder="Nhắn người giao món…"
-                />
-                {draft.error && <Banner error>{draft.error}</Banner>}
-                <Label muted>
-                  {draft.saved
-                    ? "Đã lưu tin nhắn nháp"
-                    : draft.ready
-                      ? "Tối đa 1.000 ký tự"
-                      : "Đang khôi phục nháp…"}
-                </Label>
-              </>
-            )}
-            {(!readOnly || draft.value.pending) && (
-              <View style={styles.row}>
-                <View style={{ flex: 1 }}>
-                  <Button
-                    title={
-                      draft.value.pending ? "Thử lại tin đã gửi" : "Gửi tin"
-                    }
-                    disabled={
-                      !draft.ready ||
-                      (!draft.value.text.trim() && !draft.value.pending)
-                    }
-                    busy={busy}
-                    onPress={() => {
-                      void send();
-                    }}
-                  />
+    <GuiScreen title={peer?.displayName ?? "Trò chuyện"} subtitle={`Đơn #${orderId}`} scroll={false}
+      right={query.data && !readOnly ? <IconButton name="call" label="Gọi mô phỏng" variant="plain" onPress={() => router.push({ pathname: "/calls/[orderId]", params: { orderId } })} /> : undefined}
+      footer={query.data ? <>
+        {readOnly && <Label muted>Đơn đã kết thúc · Hội thoại chỉ đọc.</Label>}
+        {draft.value.pending && <Label muted>Tin đang chờ xác nhận · Thử lại với nội dung đã gửi.</Label>}
+        {(!readOnly || draft.value.pending) && <View style={chatStyles.composer}>
+          {!draft.value.pending && !readOnly && <IconButton name="add" label="Gửi ảnh món ăn minh họa có sẵn" variant="plain" disabled={!draft.ready || busy} onPress={() => { void send(true); }} />}
+          {!readOnly && <TextInput accessibilityLabel="Tin nhắn" placeholder="Nhắn người giao món…" placeholderTextColor={colors.muted}
+            multiline maxLength={1000} editable={draft.ready && !busy && !draft.value.pending}
+            value={draft.value.text} onChangeText={(text) => { void draft.update({ text, pending: null }).catch(() => {}); }} style={chatStyles.input} />}
+          <IconButton name={draft.value.pending ? "refresh" : "send"} label={draft.value.pending ? "Thử lại tin đã gửi" : "Gửi tin"}
+            disabled={busy || !draft.ready || (!draft.value.text.trim() && !draft.value.pending)} onPress={() => { void send(); }} />
+        </View>}
+        {!draft.ready && !draft.error && <Label muted>Đang khôi phục nháp…</Label>}
+      </> : undefined}>
+      <ScrollView keyboardShouldPersistTaps="handled" style={{flex:1}} contentContainerStyle={chatStyles.timeline}>
+        <LoadState loading={query.loading} error={query.error} retry={() => { void query.reload(); }} />
+        {error && <Banner error>{error}</Banner>}
+        {draft.error && <><Banner error>{draft.error}</Banner>{!draft.ready && <Button title="Thử đọc lại tin nhắn nháp" onPress={() => { void draft.reload(); }} />}</>}
+        {query.data && <>
+          {hasOlder && messages.length >= 20 && <Button title="Xem tin nhắn trước" busy={busy} variant="ghost" onPress={() => { void more(); }} />}
+          {!messages.length && <Card><Heading>Bắt đầu lời chào</Heading><Label muted>Trao đổi ghi chú giao nhận tại đây. Nút + gửi một ảnh món ăn minh họa có sẵn.</Label></Card>}
+          {messages.map((m) => {
+            const own = m.senderId === session!.user.id;
+            return <AnimatedChange changeKey={m.id} key={m.id}>
+              <View style={{alignSelf:own ? "flex-end" : "flex-start",maxWidth:"88%",gap:5}}>
+                <View style={[chatStyles.bubble,{backgroundColor:own ? colors.mint : "#F0F0EE"}]}>
+                  {!own && <Text style={chatStyles.sender}>{m.senderName}</Text>}
+                  {m.kind === "IMAGE" ? <>
+                    <Image source={require("../../../../assets/images/food/chicken-rice.png")} accessibilityLabel="Ảnh cơm gà minh họa đính kèm" style={chatStyles.attachment} resizeMode="cover" />
+                    <Label muted>Ảnh mẫu minh họa</Label>
+                  </> : <Text style={guiStyles.text}>{m.text}</Text>}
                 </View>
-                {!draft.value.pending && !readOnly && (
-                  <Button
-                    title="Gửi ảnh minh họa"
-                    variant="secondary"
-                    disabled={!draft.ready}
-                    busy={busy}
-                    onPress={() => {
-                      void send(true);
-                    }}
-                  />
-                )}
+                <Text style={[chatStyles.time,{textAlign:own ? "right" : "left"}]}>{dateTime(m.createdAt)}</Text>
               </View>
-            )}
-          </>
-        )
-      }
-    >
-      <LoadState
-        loading={query.loading}
-        error={query.error}
-        retry={() => {
-          void query.reload();
-        }}
-      />
-      {error && <Banner error>{error}</Banner>}
-      {draft.error&&<><Banner error>{draft.error}</Banner>{!draft.ready&&<Button title="Thử đọc lại tin nhắn nháp" onPress={()=>{void draft.reload();}} />}</>}
-      {query.data && (
-        <>
-          {!readOnly && (
-            <Button
-              title="Gọi tài xế · dùng thử"
-              variant="ghost"
-              onPress={() =>
-                router.push({
-                  pathname: "/calls/[orderId]",
-                  params: { orderId },
-                })
-              }
-            />
-          )}
-          <Banner>
-            Nhắn nhau để giao món thuận tiện hơn. Hiện bạn có thể gửi ảnh minh họa có sẵn.
-          </Banner>
-          {hasOlder && messages.length >= 20 && (
-            <Button
-              title="Xem tin nhắn trước"
-              busy={busy}
-              variant="ghost"
-              onPress={() => {
-                void more();
-              }}
-            />
-          )}
-          {!messages.length && (
-            <Card>
-              <Heading>Bắt đầu lời chào</Heading>
-              <Label muted>
-                Bạn có thể trao đổi ghi chú giao nhận tại đây.
-              </Label>
-            </Card>
-          )}
-          {messages.map((m) => (
-            <AnimatedChange changeKey={m.id} key={m.id}>
-            <View
-              key={m.id}
-              style={{
-                alignSelf:
-                  m.senderId === session!.user.id ? "flex-end" : "flex-start",
-                maxWidth: "88%",
-                backgroundColor:
-                  m.senderId === session!.user.id ? colors.mint : colors.white,
-                borderRadius: 16,
-                padding: 14,
-                gap: 6,
-                borderWidth: 1,
-                borderColor: colors.line,
-              }}
-            >
-              <Text style={{ fontSize: 12, color: colors.muted }}>
-                {m.senderName}
-              </Text>
-              {m.kind === "IMAGE" ? (
-                <>
-                  <Image
-                    source={require("../../../../assets/images/food/chicken-rice.png")}
-                    accessibilityLabel="Ảnh cơm gà minh họa đính kèm"
-                    style={{ width: 160, height: 120, borderRadius: 10 }}
-                    resizeMode="cover"
-                  />
-                  <Label muted>Ảnh mẫu đính kèm</Label>
-                </>
-              ) : (
-                <Label>{m.text}</Label>
-              )}
-              <Text style={{ fontSize: 11, color: colors.muted }}>
-                {dateTime(m.createdAt)}
-              </Text>
-            </View>
-            </AnimatedChange>
-          ))}
-        </>
-      )}
-    </Screen>
+            </AnimatedChange>;
+          })}
+        </>}
+      </ScrollView>
+    </GuiScreen>
   );
 }
+const chatStyles = StyleSheet.create({
+  timeline:{padding:18,gap:18,paddingBottom:24,flexGrow:1},composer:{flexDirection:"row",alignItems:"center",gap:6},
+  input:{flex:1,minWidth:0,minHeight:46,maxHeight:120,borderRadius:25,backgroundColor:"#F0F0EE",paddingHorizontal:16,paddingVertical:12,fontSize:15,lineHeight:21,color:colors.ink},
+  bubble:{borderRadius:20,padding:14,gap:6},sender:{fontSize:12,color:colors.muted},time:{fontSize:11,lineHeight:16,color:colors.muted,paddingHorizontal:3},attachment:{width:200,height:150,maxWidth:"100%",borderRadius:14},
+});

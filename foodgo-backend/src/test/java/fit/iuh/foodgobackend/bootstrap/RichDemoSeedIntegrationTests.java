@@ -31,7 +31,8 @@ class RichDemoSeedIntegrationTests {
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM driver_reviews r JOIN orders o ON o.id=r.order_id WHERE o.status<>'DELIVERED' OR o.driver_id<>r.driver_id OR o.customer_id<>r.customer_id",Integer.class));
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM messages m JOIN orders o ON o.id=m.order_id WHERE m.sender_id<>o.customer_id AND m.sender_id<>o.driver_id",Integer.class));
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM orders o WHERE o.status IN ('CANCELLED','REJECTED') AND o.payment_method='MOCK_WALLET' AND o.payment_status<>'REFUNDED'",Integer.class));
-  assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM orders o JOIN driver_offers f ON f.order_id=o.id AND f.status='ACCEPTED' WHERE o.assigned_at>f.expires_at OR o.assigned_at<>f.responded_at",Integer.class));
+  // Validate this seed's historical timestamps, not unrelated older manual QA orders.
+  assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM orders o JOIN driver_offers f ON f.order_id=o.id AND f.status='ACCEPTED' WHERE EXISTS (SELECT 1 FROM order_events e WHERE e.order_id=o.id AND e.event_type='SAMPLE_ORDER_CREATED') AND (o.assigned_at>f.expires_at OR o.assigned_at<>f.responded_at)",Integer.class));
   assertEquals(0,db.queryForObject("SELECT COUNT(*) FROM driver_offers WHERE status='EXPIRED' AND responded_at<expires_at",Integer.class));
   var after=counts();rich.seed();assertEquals(after,counts());
   assertEquals(before,db.queryForList("SELECT u.*,c.id AS cart_id,c.version AS cart_version,c.restaurant_id AS cart_restaurant FROM users u LEFT JOIN carts c ON c.customer_id=u.id WHERE u.username IN ('customer-1','customer-2','restaurant-1','driver-1','driver-2') ORDER BY u.id"));

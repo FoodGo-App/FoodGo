@@ -8,6 +8,7 @@ import { ApiError, httpRequest } from "../shared/api/http";
 import { config } from "../shared/config/env";
 import { readStore, tokenStore, writeStore } from "../shared/storage/store";
 import { createSessionController } from "./sessionController";
+import { demoInvalidatesResources } from "./demoInvalidation";
 
 type Context = {
   session: Session | null;
@@ -70,7 +71,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         writes.current = writes.current.catch(() => {}).then(() => writeStore("demo-server", snapshot));
         try { await writes.current; setStorageError(null); }
         catch { setStorageError("Chưa lưu được phiên demo. Không đảm bảo phục hồi khi đóng app."); }
-        setRevision((n) => n + 1);
+        if (demoInvalidatesResources(path, method)) setRevision((n) => n + 1);
       }
       return result;
     }, [api]);

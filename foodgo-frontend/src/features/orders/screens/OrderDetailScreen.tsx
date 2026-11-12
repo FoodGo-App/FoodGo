@@ -35,6 +35,7 @@ import {
 import { newRequestKey } from "../../../shared/utils/id";
 import { orderService } from "../services/orderService";
 import { deliveryService } from "../../delivery/services/deliveryService";
+import { CustomerOrderView } from "../components/CustomerOrderView";
 export default function OrderDetailScreen() {
   return (
     <RequireRole roles={["CUSTOMER", "RESTAURANT", "DRIVER"]}>
@@ -120,6 +121,8 @@ function Detail() {
     } finally {actionLock.current=false;setBusy(false);}
   };
   const has = (action: string) => order?.allowedActions?.includes(action);
+  if (role === "CUSTOMER" && order && success !== "1")
+    return <CustomerOrderView order={order} tracking={tracking.data} trackingError={tracking.error} error={error || query.error} busy={busy} onRefresh={()=>{void query.reload();void tracking.reload();}} onCancel={reason=>confirmAction(()=>orderService(request).cancel(id,reason))} onRetry={()=>{void act(()=>orderService(request).retry(id));}} />;
   if (success === "1" && role === "CUSTOMER" && order)
     return (
       <Screen title="Đặt món thành công!" subtitle={`Mã đơn #${id}`} back>

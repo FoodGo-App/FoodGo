@@ -130,6 +130,7 @@ export function normalizeOrder(value: unknown): Order {
     areaCode: str(w.areaCode || recipient.areaCode),
     driverId: str(w.driverId ?? driver.id) || undefined,
     driverName: str(w.driverName ?? driver.displayName) || undefined,
+    driverAvatarUrl: str(w.driverAvatarUrl ?? driver.avatarUrl) || undefined,
     items: rows(w.lines ?? w.items).map((v, i) => normalizeLine(v, i)),
     status: w.status as Order["status"],
     deliveryStatus: w.deliveryStatus as Order["deliveryStatus"],

@@ -119,6 +119,7 @@ export type Order = {
   updatedAt: string;
   driverId?: string;
   driverName?: string;
+  driverAvatarUrl?: string;
   issue?: string;
   events: OrderEvent[];
   allowedActions: string[];
@@ -158,7 +159,7 @@ export type Conversation = {
   id: string;
   orderId: string;
   readOnly: boolean;
-  participants: { id: string; displayName: string }[];
+  participants: { id: string; displayName: string; avatarUrl?: string }[];
 };
 export type ReviewInput = { stars: number; tags: string[]; note: string };
 export type Review = ReviewInput & {

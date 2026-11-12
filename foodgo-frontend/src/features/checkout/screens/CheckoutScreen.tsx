@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { router } from 'expo-router';
 import { useApp } from '../../../providers/AppProvider';
-import { Banner, Button, Card, Chip, Empty, Heading, Label, LoadState, MealItems, MoneyRows, RequireRole, Screen, styles } from '../../../shared/components/ui';
-import { AnimatedChange } from '../../../shared/components/Motion';
+import { Banner, Button, Empty, Heading, Label, LoadState, MealItems, RequireRole, styles } from '../../../shared/components/ui';
+import { GuiScreen, GuiModal, Icon, guiStyles } from '../../../shared/components/Gui';
+import { AnimatedChange, MotionPressable } from '../../../shared/components/Motion';
+import { AddressChooser, OfferChooser, SelectionRow } from './CheckoutChoosers';
 import { useResource } from '../../../shared/hooks/useResource';
 import { newRequestKey } from '../../../shared/utils/id';
 import { money } from '../../../shared/theme/theme';
@@ -31,6 +33,7 @@ function Checkout() {
   const [error, setError] = useState<string | null>(null), [notice, setNotice] = useState<string | null>(null);
   const [pending, setPending] = useState<CheckoutReference | null>(null);
   const [offersOpen, setOffersOpen] = useState(false), [retry, setRetry] = useState(0), [initRetry, setInitRetry] = useState(0);
+  const [addressOpen, setAddressOpen] = useState(false), [paymentOpen, setPaymentOpen] = useState(false);
   const lock = useRef(false), storeKey = `checkout:${session!.user.id}`;
   const alive = useRef(true);
   const ready = checkedAccount === storeKey;
@@ -129,9 +132,8 @@ function Checkout() {
     });
   };
   const updating = editable && !context.error && cartValid && !!selectedAddress && (pricing.status === 'loading' || pricing.identity !== identity);
-  const availableOffers = data?.offers.filter(o => !offerProblem(o, subtotal, method, data.cart.restaurantId)) ?? [];
-  const sortedOffers = [...(data?.offers ?? [])].sort((a, b) => Number(!!offerProblem(a, subtotal, method, data!.cart.restaurantId)) - Number(!!offerProblem(b, subtotal, method, data!.cart.restaurantId)));
-  return <Screen title="Kiểm tra đơn" subtitle="Một bữa ngon, giao đến đúng nơi." back onRefresh={() => { changed(); void context.reload(); }} footer={
+  const address = data?.addresses.find(a => a.id === selectedAddress);
+  return <><GuiScreen title="Xác nhận đơn" onRefresh={() => { changed(); void context.reload(); }} footer={
     !ready ? <Button title={initializing ? 'Đang kiểm tra thanh toán…' : 'Kiểm tra lại thanh toán'} busy={initializing} onPress={() => { setError(null); setCheckedAccount(null); setInitializing(true); setInitRetry(n => n + 1); }} /> : pending ? <Button title="Kiểm tra kết quả đặt món" busy={busy} onPress={recover} /> : <>
       <View style={styles.between}><Label muted>Tổng thanh toán</Label><Text accessibilityLiveRegion="polite" style={styles.bigPrice}>{quote ? money(quote.total) : updating && data?.cart.items.length && selectedAddress ? 'Đang tính…' : 'Chưa có giá'}</Text></View>
       <Button title={invalidItems.length ? 'Bỏ món chưa hợp lệ để tiếp tục' : quote ? 'Đặt món' : updating ? 'Đang cập nhật giá…' : 'Chờ giá mới'} disabled={!quote || !editable || !!context.error || !cartValid} busy={busy} onPress={place} />
@@ -143,39 +145,44 @@ function Checkout() {
     {notice && <Banner>{notice}</Banner>}
     {pending && <Banner>Yêu cầu đặt món đang được kiểm tra. Hãy xem kết quả trước khi đặt tiếp.</Banner>}
     {data && !data.cart.items.length && !pending ? <Empty title="Giỏ hàng đang trống" detail="Chọn món yêu thích rồi quay lại kiểm tra đơn." action={{ title: 'Về trang chủ', onPress: () => router.replace('/') }} /> : data && <>
-      <Heading>Giao đến</Heading>
-      {data.addresses.length ? data.addresses.map(a => <Card key={a.id}>
-        <View style={styles.between}><Heading>{a.label} · {a.recipientName}</Heading><Chip title={selectedAddress === a.id ? 'Đã chọn' : 'Chọn'} selected={selectedAddress === a.id} disabled={!editable} onPress={() => { changed(); setAddress(a.id); }} /></View>
-        <Label muted>{a.addressText}</Label><Label muted>{a.recipientPhone}</Label>
-      </Card>) : <Banner error>Thêm địa chỉ nhận món để tiếp tục nhé.</Banner>}
-      {mode === 'api' && <Button title={data.addresses.length ? 'Thêm hoặc sửa địa chỉ' : 'Thêm địa chỉ nhận món'} variant="secondary" disabled={!editable} onPress={() => { changed(); router.push('/addresses'); }} />}
-      <Card><Heading>{data.cart.restaurantName}</Heading><MealItems items={data.cart.items} />
+      <View style={styles.between}><Heading>Giao đến</Heading><Button title="Đổi" variant="ghost" disabled={!editable} onPress={() => setAddressOpen(true)} /></View>
+      <MotionPressable accessibilityRole="button" accessibilityLabel="Chọn địa chỉ giao hàng" disabled={!editable} onPress={() => setAddressOpen(true)} style={guiStyles.row}>
+        <Icon name="pin" size={32} /><View style={{ flex: 1, gap: 4 }}><Heading>{address ? `${address.label} · ${address.recipientName}` : 'Thêm địa chỉ nhận món'}</Heading><Label muted>{address?.addressText || 'Chọn nơi nhận món để tiếp tục'}</Label>{address && <Label muted>{address.recipientPhone}</Label>}</View>
+      </MotionPressable>
+      <View style={guiStyles.divider} />
+      <View style={styles.between}><View style={[guiStyles.row, { flex: 1 }]}><Icon name="store" size={34} /><View style={{ flex: 1 }}><Heading>{data.cart.restaurantName}</Heading></View></View><Button title="Sửa giỏ" variant="ghost" disabled={!editable} onPress={() => { changed(); router.push('/cart'); }} /></View>
+      <View style={{ gap: 16 }}><MealItems items={data.cart.items} />
         {!!invalidItems.length && <Banner error>Có món chưa thể đặt. Bỏ các món dưới đây để tiếp tục; những món khác vẫn được giữ.</Banner>}
         {invalidItems.map(item => <View key={item.id} style={{ gap: 8 }}><Heading>{item.foodName}</Heading><Label muted>{item.validationMessage || 'Món hoặc lựa chọn hiện không còn phục vụ.'}</Label><Button title={`Bỏ ${item.foodName} khỏi giỏ`} variant="secondary" disabled={!editable} busy={busy} onPress={() => void run(async () => { await service.removeItem(item.id, data.cart.version); await context.reload(); setNotice('Đã bỏ món khỏi giỏ. Giá sẽ tự cập nhật cho các món còn lại.'); })} /></View>)}
-      </Card>
-      <Heading>Thanh toán</Heading>
-      <View style={{ gap: 10 }}>{(['COD', 'MOCK_WALLET'] as const).map(m => <Chip key={m} title={m === 'COD' ? 'Tiền mặt khi nhận món' : 'Ví thử nghiệm · Không chuyển tiền thật'} selected={method === m} disabled={!editable} onPress={() => { changed(); setMethod(m); }} />)}</View>
-      <Card>
-        <View style={styles.between}><Heading>Ưu đãi của bạn</Heading><Chip title={offersOpen ? 'Thu gọn' : `Chọn mã (${availableOffers.length})`} selected={offersOpen} disabled={!editable} onPress={() => setOffersOpen(v => !v)} /></View>
-        <Label muted>{selectedOffer && !invalidOffer ? `${selectedOffer.code} · ${selectedOffer.name}` : 'Chưa dùng ưu đãi'}</Label>
-        {!!effectiveOfferId && <Button title="Bỏ mã ưu đãi" variant="ghost" disabled={!editable} onPress={() => { changed(); setOffer(''); }} />}
-        {offersOpen && <ScrollView nestedScrollEnabled style={{ maxHeight: 270 }} contentContainerStyle={{ gap: 12, paddingVertical: 6 }}>
-          {sortedOffers.length ? sortedOffers.map(offer => { const problem = offerProblem(offer, subtotal, method, data.cart.restaurantId); return <View key={offer.id} style={{ gap: 4, paddingVertical: 6 }}>
-            <Chip title={`${offer.code} · ${offer.name}`} selected={offerId === offer.id && !problem} disabled={!editable || !!problem} onPress={() => { changed(); setOffer(offer.id); setOffersOpen(false); }} />
-            <Label muted>{problem || `Áp dụng từ ${money(offer.minSubtotal)} tiền món`}</Label>
-          </View>; }) : <Label muted>Hiện chưa có ưu đãi.</Label>}
-        </ScrollView>}
-      </Card>
-      <AnimatedChange changeKey={quote?.id ?? pricing.status}><Card>
-        <Heading>Chi tiết thanh toán</Heading>
-        {quote ? <><MoneyRows data={quote} /><Label muted>Giao đến {quote.address?.addressText || data.addresses.find(a => a.id === selectedAddress)?.addressText} · {quote.paymentMethod === 'COD' ? 'Tiền mặt' : 'Ví thử nghiệm'}</Label></> : <View style={{ gap: 12 }}>
+      </View>
+      <View style={guiStyles.divider} />
+      <CheckoutLink icon="wallet" title="Thanh toán" detail={method === 'COD' ? 'Tiền mặt' : 'Ví thử nghiệm'} disabled={!editable} onPress={() => setPaymentOpen(true)} />
+      <CheckoutLink icon="ticket" title="Ưu đãi" detail={selectedOffer && !invalidOffer ? `${selectedOffer.code}${quote ? ` · −${money(quote.foodDiscount + quote.deliveryDiscount)}` : ''}` : 'Chọn mã ưu đãi'} disabled={!editable} onPress={() => setOffersOpen(true)} />
+      <AnimatedChange changeKey={quote?.id ?? pricing.status}><View style={{ gap: 12 }}>
+        {quote ? <>{[
+          ['Tiền món', quote.subtotal], ['Phí giao hàng', quote.deliveryFee], ['Giảm giá', -quote.foodDiscount - quote.deliveryDiscount],
+        ].map(([label, amount]) => <View key={label} style={styles.between}><Label muted>{label}</Label><Label>{money(amount as number)}</Label></View>)}</> : <View style={{ gap: 12 }}>
           {['Tiền món', 'Phí giao hàng', 'Ưu đãi', 'Tổng thanh toán'].map(label => <View key={label} style={styles.between}><Label muted>{label}</Label><Label>{updating ? 'Đang cập nhật…' : '—'}</Label></View>)}
           {pricing.status === 'error' && <Banner error>{checkoutMessage(pricing.error)}</Banner>}
           {!!invalidItems.length && <Label muted>Vui lòng bỏ món chưa hợp lệ để xem giá và đặt món.</Label>}
           {!pending && <Label muted>Giá tự cập nhật khi bạn đổi địa chỉ, ưu đãi hoặc cách thanh toán.</Label>}
         </View>}
-      </Card></AnimatedChange>
+      </View></AnimatedChange>
+      <Label muted>Giá tự cập nhật theo lựa chọn của bạn.</Label>
       <Label muted>Chỉ hủy trong lúc chờ nhà hàng xác nhận. Không có phí ngoài tổng thanh toán.</Label>
     </>}
-  </Screen>;
+  </GuiScreen>
+  {data && <>
+    <OfferChooser visible={offersOpen} onClose={() => setOffersOpen(false)} offers={data.offers} selectedId={effectiveOfferId} subtotal={subtotal} method={method} restaurantId={data.cart.restaurantId} editable={editable} onSelect={id => { changed(); setOffer(id); }} quote={quote} updating={updating} error={pricing.status === 'error' ? checkoutMessage(pricing.error) : null} onRetry={() => setRetry(n => n + 1)} />
+    <AddressChooser visible={addressOpen} onClose={() => setAddressOpen(false)} addresses={data.addresses} selectedId={selectedAddress} editable={editable} allowEdit={mode === 'api'} onSelect={id => { changed(); setAddress(id); }} onSaved={async id => { changed(); setAddress(id); const loaded = await context.reload(); if (!loaded) throw new Error('Chưa tải lại được thông tin đơn. Hãy thử lại.'); }} />
+    <GuiModal visible={paymentOpen} title="Thanh toán" onClose={() => setPaymentOpen(false)} footer={<Button title="Xong" onPress={() => setPaymentOpen(false)} />}>
+      {(['COD', 'MOCK_WALLET'] as const).map(m => <SelectionRow key={m} icon="wallet" title={m === 'COD' ? 'Tiền mặt khi nhận món' : 'Ví thử nghiệm'} detail={m === 'COD' ? 'Thanh toán cho tài xế khi nhận món' : 'Không chuyển tiền thật'} selected={method === m} disabled={!editable} onPress={() => { changed(); setMethod(m); }} />)}
+      <Label muted>Giá và điều kiện ưu đãi tự cập nhật khi đổi cách thanh toán.</Label>
+    </GuiModal>
+  </>}
+  </>;
+}
+
+function CheckoutLink({ icon, title, detail, disabled, onPress }: { icon: 'wallet' | 'ticket'; title: string; detail: string; disabled: boolean; onPress: () => void }) {
+  return <MotionPressable accessibilityRole="button" accessibilityLabel={`${title}: ${detail}`} accessibilityState={{ disabled }} disabled={disabled} onPress={onPress} style={[guiStyles.row, { paddingVertical: 12, paddingHorizontal: 12, borderRadius: 12, backgroundColor: '#F0F3EE', opacity: disabled ? 0.5 : 1 }]}><Icon name={icon} /><Text style={[guiStyles.heading, { flex: 1, fontSize: 17 }]}>{title}</Text><Text style={[guiStyles.text, { flexShrink: 1, textAlign: 'right' }]}>{detail}</Text><Icon name="chevron" size={20} /></MotionPressable>;
 }

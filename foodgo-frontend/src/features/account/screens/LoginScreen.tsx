@@ -1,4 +1,6 @@
+import {M01Screen as Screen,m} from "../../catalog/components/M01Layout";
 import React, { useEffect, useRef, useState } from "react";
+import { Pressable, Text, View } from "react-native";
 import { router, useLocalSearchParams, usePreventRemove, useIsFocused, type Href } from "expo-router";
 import { afterLoginTarget, cancelLoginTarget } from "../loginReturn";
 import { useApp } from "../../../providers/AppProvider";
@@ -10,7 +12,6 @@ import {
   Heading,
   Label,
   Panda,
-  Screen,
 } from "../../../shared/components/ui";
 import { DEMO_USERS } from "../../../shared/api/demo";
 import { explain } from "../../../shared/theme/theme";
@@ -32,6 +33,7 @@ export default function LoginScreen() {
     disablePrevention();
     router.replace(cancelLoginTarget(returnTo) as Href);
   }
+  const [passwordVisible, setPasswordVisible] = useState(false);
   const [username, setUsername] = useState(""),
     [password, setPassword] = useState(""),
     [busy, setBusy] = useState(false),
@@ -54,10 +56,10 @@ export default function LoginScreen() {
     }
   };
   return (
-    <Screen title="Chào bạn, mời vào FoodGo" back onBack={cancel}>
-      <Panda size={145} />
+    <Screen title="Đăng nhập" back onBack={cancel}>
+      <View style={{backgroundColor:"#E4F2EB",borderRadius:20,padding:16,alignItems:"center",gap:8}}><Panda size={100}/><Text style={{...m.heading,fontSize:20,textAlign:"center"}}>Chào bạn, mời vào FoodGo</Text><Text style={m.meta}>Đăng nhập để tiếp tục chọn món</Text></View>
       {error && <Banner error>{error}</Banner>}
-      <Button title="Hủy đăng nhập" variant="ghost" onPress={cancel} />
+
       {mode === "demo" ? (
         <>
           <Banner>
@@ -94,12 +96,24 @@ export default function LoginScreen() {
             value={username}
             onChangeText={setUsername}
           />
-          <Field
-            label="Mật khẩu"
-            secureTextEntry
-            value={password}
-            onChangeText={setPassword}
-          />
+          <View style={{ position: "relative" }}>
+            <Field
+              label="Mật khẩu"
+              secureTextEntry={!passwordVisible}
+              value={password}
+              onChangeText={setPassword}
+              style={{ paddingRight: 72 }}
+            />
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel={passwordVisible ? "Ẩn mật khẩu" : "Hiện mật khẩu"}
+              accessibilityHint="Đổi cách hiển thị mật khẩu, không thay đổi mật khẩu đã nhập"
+              onPress={() => setPasswordVisible((value) => !value)}
+              style={{ position: "absolute", right: 8, bottom: 0, minWidth: 52, minHeight: 50, justifyContent: "center", alignItems: "center" }}
+            >
+              <Text style={{ color: "#006C59", fontWeight: "700" }}>{passwordVisible ? "Ẩn" : "Hiện"}</Text>
+            </Pressable>
+          </View>
           <Button
             title="Đăng nhập"
             busy={busy}
@@ -113,6 +127,7 @@ export default function LoginScreen() {
           </Label>
         </Card>
       )}
+      <Button title="Tiếp tục xem món như khách" variant="secondary" onPress={cancel}/>
     </Screen>
   );
 }
