@@ -214,7 +214,7 @@ function Detail() {
               {tracking.error && <Banner error>{tracking.error}</Banner>}
               {tracking.data &&
                 (tracking.data.mapAssetCode === "AREA_A" ? (
-                  <SimulatedMap etaMinutes={tracking.data.etaMinutes} />
+                  <SimulatedMap etaMinutes={tracking.data.etaMinutes} restaurantName={order.restaurantName} />
                 ) : (
                   <Banner>Chưa có bản đồ mẫu cho khu vực của đơn này.</Banner>
                 ))}

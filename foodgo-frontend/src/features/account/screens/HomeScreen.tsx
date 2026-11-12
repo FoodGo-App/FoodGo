@@ -130,7 +130,7 @@ export default function HomeScreen() {
       {mode === "api" && (
         <Banner>
           Bạn có thể kiểm tra giỏ đã chọn và theo dõi đơn hàng tại đây.
-          Nếu giỏ đang trống, hãy quay lại khi bạn đã chọn món.
+          Giỏ đang trống? Khám phá quán và món để chọn bữa ngon nhé.
         </Banner>
       )}
     </Screen>

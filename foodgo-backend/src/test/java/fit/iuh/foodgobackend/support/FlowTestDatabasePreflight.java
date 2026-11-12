@@ -12,6 +12,13 @@ final class FlowTestDatabasePreflight {
     if(!result.next()||result.getInt(1)==0)throw new IllegalStateException("Flow precheck: V1 requires direct ALTER privilege on test users table (or test schema); no writes performed.");
    }
   }
+  String triggerPermission="SELECT COUNT(*) FROM (SELECT PRIVILEGE_TYPE FROM information_schema.SCHEMA_PRIVILEGES WHERE TABLE_SCHEMA=? AND "+GRANTEE+" AND PRIVILEGE_TYPE='TRIGGER' UNION ALL SELECT PRIVILEGE_TYPE FROM information_schema.TABLE_PRIVILEGES WHERE TABLE_SCHEMA=? AND TABLE_NAME='order_items' AND "+GRANTEE+" AND PRIVILEGE_TYPE='TRIGGER') permitted";
+  try(var query=connection.prepareStatement(triggerPermission)){
+   query.setString(1,DATABASE);query.setString(2,DATABASE);
+   try(var result=query.executeQuery()){
+    if(!result.next()||result.getInt(1)==0)throw new IllegalStateException("Flow precheck: checkout rollback test requires TRIGGER privilege on test order_items (or test schema); no writes performed.");
+   }
+  }
   boolean history;
   try(var query=connection.prepareStatement("SELECT COUNT(*) FROM information_schema.TABLES WHERE TABLE_SCHEMA=? AND TABLE_NAME='flyway_schema_history'")){
    query.setString(1,DATABASE);try(var result=query.executeQuery()){history=result.next()&&result.getInt(1)>0;}

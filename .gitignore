@@ -15,6 +15,7 @@ node_modules/
 .expo/
 target/
 dist/
+dist-*/
 web-build/
 .runtime/
 *.log

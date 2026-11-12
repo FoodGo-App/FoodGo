@@ -5,11 +5,11 @@
 | Thư mục | Nội dung |
 |---|---|
 | [foodgo-frontend](foodgo-frontend/README.md) | Ứng dụng mobile và giao diện các vai trò, mascot panda, chế độ demo và lớp gọi API |
-| [foodgo-backend](foodgo-backend/README.md) | API M03–M05, nền M01–M02, schema MariaDB và seed local |
+| [foodgo-backend](foodgo-backend/README.md) | API M01–M05, schema MariaDB và seed local |
 
 ## Trạng thái bàn giao
 
-M01–M02 giữ kết quả nghiệm thu riêng (backend45, FE67, web12 và Android do người dùng thao tác). Main đã bổ sung API checkout/order/fulfillment/communication M03–M05. Bản worktree tích hợp đang được kiểm tra độc lập; kết quả các nhánh trước không tự chứng minh FE–BE/DB/mobile của bản tích hợp đã đạt.
+Đã tích hợp M01–M02 của A với M03–M05: đăng nhập, địa chỉ, khám phá quán/món, yêu thích và giỏ nối sang checkout, xử lý/giao đơn và liên lạc. Kết quả kiểm chứng bản ghép và giới hạn nghiệm thu thiết bị xem [review tích hợp](docs/INTEGRATION_REVIEW_2026-11-12.md). Ví, cuộc gọi và bản đồ vẫn là mô phỏng trong phạm vi đồ án.
 
 Đọc [bàn giao M01–M02](docs/M01_M02_HANDOVER.md), [runbook main](foodgo-backend/docs/API_FLOW_RUNBOOK.md), và [cách ly DB tích hợp](docs/INTEGRATION_M01_M05.md).
 
@@ -40,7 +40,7 @@ Kiểm tra `http://localhost:8080/api/v1/health`. Flyway áp dụng migration kh
 
 Frontend: `npm test`, `npm run lint`, `npm run typecheck`.
 
-Backend: bộ test context/HTTP bắt buộc database `fooddriver_m01_test` và account riêng qua guard/probe. Thiết lập đúng ba biến `FOODGO_TEST_DB_*` theo [bàn giao](docs/M01_M02_HANDOVER.md) trước khi chạy `mvnw.cmd test`; cấu hình local của ứng dụng không thay thế cấu hình test.
+Backend: test M01–M02 dùng `fooddriver_m01_test` với `FOODGO_TEST_DB_*`; test flow tích hợp dùng `fooddriver_it_m01_m05` với `FOODGO_FLOW_TEST_DB_*`. Mỗi schema dùng account riêng, chạy probe trước. Xem [cấu hình cách ly](docs/INTEGRATION_M01_M05.md) và [review tích hợp](docs/INTEGRATION_REVIEW_2026-11-12.md); cấu hình local của ứng dụng không thay thế cấu hình test.
 
 ## Làm việc nhóm
 

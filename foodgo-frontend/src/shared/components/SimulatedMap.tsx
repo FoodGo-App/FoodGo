@@ -1,10 +1,10 @@
 import React from "react";
 import { Text, View } from "react-native";
 import { colors } from "../theme/theme";
-export function SimulatedMap({ etaMinutes = 25 }: { etaMinutes?: number }) {
+export function SimulatedMap({ etaMinutes = 25, restaurantName = "Nhà hàng" }: { etaMinutes?: number; restaurantName?: string }) {
   return (
     <View
-      accessibilityLabel="Bản đồ mô phỏng từ Bếp Nhà đến điểm giao mẫu, không sử dụng GPS"
+      accessibilityLabel={`Bản đồ mô phỏng từ ${restaurantName} đến điểm giao mẫu, không sử dụng GPS`}
       style={{
         height: 210,
         backgroundColor: "#E6EDDE",
@@ -60,15 +60,17 @@ export function SimulatedMap({ etaMinutes = 25 }: { etaMinutes?: number }) {
         }}
       />
       <Text
+        numberOfLines={2}
         style={{
           position: "absolute",
           left: "19%",
           top: 65,
           color: colors.brand,
           fontWeight: "700",
+          maxWidth: 140,
         }}
       >
-        ● Bếp Nhà
+        ● {restaurantName}
       </Text>
       <Text
         style={{

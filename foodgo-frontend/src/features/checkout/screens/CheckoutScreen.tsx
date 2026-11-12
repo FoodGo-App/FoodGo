@@ -18,7 +18,7 @@ export default function CheckoutScreen() {
   return <RequireRole roles={['CUSTOMER']}><Checkout /></RequireRole>;
 }
 function Checkout() {
-  const { request, session } = useApp();
+  const { request, session, mode } = useApp();
   const service = useMemo(() => checkoutService(request), [request]);
   const context = useResource(() => service.context());
   const reloadContext = context.reload;
@@ -147,7 +147,8 @@ function Checkout() {
       {data.addresses.length ? data.addresses.map(a => <Card key={a.id}>
         <View style={styles.between}><Heading>{a.label} · {a.recipientName}</Heading><Chip title={selectedAddress === a.id ? 'Đã chọn' : 'Chọn'} selected={selectedAddress === a.id} disabled={!editable} onPress={() => { changed(); setAddress(a.id); }} /></View>
         <Label muted>{a.addressText}</Label><Label muted>{a.recipientPhone}</Label>
-      </Card>) : <Banner error>Chưa có địa chỉ nhận món. Hãy thêm địa chỉ trong Tài khoản để tiếp tục.</Banner>}
+      </Card>) : <Banner error>Thêm địa chỉ nhận món để tiếp tục nhé.</Banner>}
+      {mode === 'api' && <Button title={data.addresses.length ? 'Thêm hoặc sửa địa chỉ' : 'Thêm địa chỉ nhận món'} variant="secondary" disabled={!editable} onPress={() => { changed(); router.push('/addresses'); }} />}
       <Card><Heading>{data.cart.restaurantName}</Heading><MealItems items={data.cart.items} />
         {!!invalidItems.length && <Banner error>Có món chưa thể đặt. Bỏ các món dưới đây để tiếp tục; những món khác vẫn được giữ.</Banner>}
         {invalidItems.map(item => <View key={item.id} style={{ gap: 8 }}><Heading>{item.foodName}</Heading><Label muted>{item.validationMessage || 'Món hoặc lựa chọn hiện không còn phục vụ.'}</Label><Button title={`Bỏ ${item.foodName} khỏi giỏ`} variant="secondary" disabled={!editable} busy={busy} onPress={() => void run(async () => { await service.removeItem(item.id, data.cart.version); await context.reload(); setNotice('Đã bỏ món khỏi giỏ. Giá sẽ tự cập nhật cho các món còn lại.'); })} /></View>)}

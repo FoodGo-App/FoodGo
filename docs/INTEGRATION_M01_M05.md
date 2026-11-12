@@ -1,5 +1,7 @@
 # Worktree tích hợp M01–M05 — 12/11/2026
 
+> Tài liệu dưới ghi lại lần ghép WIP của A. Kết quả review, kiểm chứng và sửa bổ sung sau đó nằm trong [INTEGRATION_REVIEW_2026-11-12.md](INTEGRATION_REVIEW_2026-11-12.md). Ngoài ALTER để áp dụng V1, bộ flow đầy đủ cần TRIGGER trên bảng test `order_items` để kiểm tra rollback khi ghi đơn thất bại; preflight hiện kiểm tra cả hai quyền. Không cấp quyền này trên database ứng dụng chỉ để chạy test.
+
 ## Nguồn và giới hạn kết quả
 
 Tích hợp từ M01–M02 a7993b8128288a4625cd53cbf6b5564ab6587909 và origin/main eafeadf2a7dd90d26a6c51915be1e7a1ec69ef47; merge-base 420150a. Merge --no-commit trên nhánh integration riêng, không đổi worktree/nhánh/server đang chạy, không commit/push.

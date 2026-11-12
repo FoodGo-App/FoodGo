@@ -91,4 +91,4 @@ Seed tự thêm dữ liệu mẫu khi `foodgo.seed-enabled=true`: `customer-1`, 
 
 Đưa source, `pom.xml`, wrapper, migration, tài liệu và file `.example` lên Git. Không đưa `application-local.properties`, `.env`, `target/`, `.idea/`, log hay dữ liệu runtime lên Git. Nếu file chứa mật khẩu từng được theo dõi trước đó, `.gitignore` không tự gỡ nó khỏi lịch sử Git.
 
-Repository nhóm: https://github.com/HonaJnh/FoodGo. Thay đổi mới cần được review theo nhánh trước khi tích hợp.
+Repository nhóm: https://github.com/FoodGo-App/FoodGo. Thay đổi mới cần được review theo nhánh trước khi tích hợp.
